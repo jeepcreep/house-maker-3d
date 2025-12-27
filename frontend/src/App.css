@@ -1,0 +1,181 @@
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #1a1a1a;
+  color: #eee;
+}
+
+.viewport {
+  flex-grow: 1;
+  position: relative;
+}
+
+.info-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  border-radius: 8px;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+  z-index: 10;
+}
+
+.info-overlay button {
+  pointer-events: auto;
+}
+
+.info-overlay h1 { margin: 0; font-size: 1.2rem; color: #aaddff; }
+.info-overlay p { margin: 5px 0 0 0; font-size: 0.8rem; color: #ccc; }
+
+.editor-pane {
+  width: 450px;
+  background: #222;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #444;
+  box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+}
+
+.editor-tabs {
+  display: flex;
+  background: #333;
+  border-bottom: 1px solid #444;
+}
+
+.editor-tabs button {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  color: #aaa;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.editor-tabs button:hover {
+  background: #3a3a3a;
+  color: #fff;
+}
+
+.editor-tabs button.active {
+  color: #aaddff;
+  border-bottom: 2px solid #aaddff;
+  background: #2a2a2a;
+}
+
+textarea {
+  flex-grow: 1;
+  background: #1e1e1e;
+  color: #aaddff;
+  border: none;
+  padding: 15px;
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+}
+
+textarea.error {
+  background: #2a1111;
+  color: #ffcccc;
+}
+
+.console {
+  height: 80px;
+  background: #111;
+  border-top: 1px solid #555;
+  padding: 10px 15px;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+}
+
+/* Builder Form Styles */
+.builder-form {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.form-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #333;
+}
+
+.form-section.highlight {
+  background: #2a2a2a;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.form-section h3 {
+  margin-top: 0;
+  color: #aaddff;
+  font-size: 1rem;
+}
+
+.module-editor h4 {
+  margin: 15px 0 10px;
+  color: #ccc;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.control-group label {
+  width: 100px;
+  font-size: 0.9rem;
+  color: #bbb;
+}
+
+.control-group input[type="range"] {
+  flex-grow: 1;
+  margin: 0 10px;
+}
+
+.control-group span {
+  width: 40px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.control-row label {
+  font-size: 0.9rem;
+  color: #bbb;
+}
+
+.control-row select, .control-row input[type="color"] {
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  padding: 4px;
+  border-radius: 4px;
+}

@@ -1,0 +1,19 @@
+/* Reset default vite styles to allow full screen app */
+:root {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #1a1a1a;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
