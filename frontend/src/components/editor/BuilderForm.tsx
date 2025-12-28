@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { HouseProject, HouseModule, RoofType, ModuleAttachment } from '../../types/schema';
 
 interface Props {
     project: HouseProject;
     onUpdate: (project: HouseProject) => void;
+    selectedModuleId: string;
+    onSelectModule: (id: string) => void;
 }
 
 const ROOF_TYPES: RoofType[] = [
@@ -13,8 +15,8 @@ const ROOF_TYPES: RoofType[] = [
 
 const FACES = ['front', 'back', 'left', 'right', 'top'];
 
-export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
-    const [selectedModuleId, setSelectedModuleId] = useState<string>(project.modules[0]?.id || "");
+export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModuleId, onSelectModule }) => {
+    // Local state removed, lifted to App
 
     const updateGlobal = (key: string, value: any) => {
         onUpdate({
@@ -59,6 +61,12 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
             id: newId,
             grid: { floors: 1, units: 1, depth: 1 },
             roof: { type: 'flat', orientation: 'across', height: 0.2, overhang: 0.1, color_hex: "#444444" },
+            facade: {
+                pattern: 'fill_window',
+                base_window: { type: 'window', width_ratio: 0.6, height_ratio: 0.6, offset_x: 0, offset_y: 0 },
+                base_door: { type: 'door', width_ratio: 0.8, height_ratio: 0.85, offset_x: 0, offset_y: 0 },
+                overrides: {}
+            },
             attachment: {
                 parent_id: "main",
                 face: "right",
@@ -67,14 +75,14 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
             }
         };
         onUpdate({ ...project, modules: [...project.modules, newModule] });
-        setSelectedModuleId(newId);
+        onSelectModule(newId);
     };
 
     const handleDeleteModule = () => {
         if (selectedModuleId === 'main') return;
         const newModules = project.modules.filter(m => m.id !== selectedModuleId);
         onUpdate({ ...project, modules: newModules });
-        setSelectedModuleId(newModules[0]?.id || "");
+        onSelectModule(newModules[0]?.id || "");
     };
 
     return (
@@ -115,7 +123,7 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
                 </div>
                 <select 
                     value={selectedModuleId} 
-                    onChange={(e) => setSelectedModuleId(e.target.value)}
+                    onChange={(e) => onSelectModule(e.target.value)}
                     style={{ width: '100%', padding: '8px' }}
                 >
                     {project.modules.map(m => (

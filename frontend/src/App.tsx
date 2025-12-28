@@ -3,6 +3,7 @@ import './App.css';
 import { Scene } from './components/viewer/Scene';
 import { BuilderForm } from './components/editor/BuilderForm';
 import { SavedHouses } from './components/editor/SavedHouses';
+import { FacadeEditor } from './components/editor/FacadeEditor';
 import { HouseStorage, type SavedHouse } from './utils/storage';
 import { type HouseProject, DEFAULT_PROJECT } from './types/schema';
 
@@ -11,8 +12,12 @@ function App() {
   const [project, setProject] = useState<HouseProject>(DEFAULT_PROJECT);
   const [error, setError] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'form' | 'json' | 'saves'>('form');
+  const [activeTab, setActiveTab] = useState<'form' | 'facade' | 'json' | 'saves'>('form');
   
+  // Selection State (Shared between Editor and Scene)
+  const [selectedModuleId, setSelectedModuleId] = useState<string>("main");
+  const [selectedFace, setSelectedFace] = useState<string>("front");
+
   // State for Save System
   const [currentFileId, setCurrentFileId] = useState<string | null>(null);
   const [currentFileName, setCurrentFileName] = useState<string | null>(null);
@@ -49,6 +54,29 @@ function App() {
       setProject(newProject);
       setJsonInput(JSON.stringify(newProject, null, 2));
       setIsDirty(true);
+  };
+
+  // Helper: Determine best face to look at
+  const getSmartFace = (modId: string, proj: HouseProject) => {
+      const mod = proj.modules.find(m => m.id === modId);
+      if (!mod || !mod.attachment) return 'front'; // Default for root
+      
+      const att = mod.attachment.face;
+      // If attached to parent's FRONT, my BACK is blocked. Look at FRONT.
+      if (att === 'front') return 'front';
+      // If attached to parent's BACK, my FRONT is blocked. Look at BACK.
+      if (att === 'back') return 'back';
+      // If attached to parent's LEFT, my RIGHT is blocked. Look at LEFT.
+      if (att === 'left') return 'left';
+      // If attached to parent's RIGHT, my LEFT is blocked. Look at RIGHT.
+      if (att === 'right') return 'right';
+      
+      return 'front';
+  };
+
+  const handleModuleSelect = (id: string) => {
+      setSelectedModuleId(id);
+      setSelectedFace(getSmartFace(id, project));
   };
 
   // --- SAVE SYSTEM ---
@@ -105,7 +133,10 @@ function App() {
   return (
     <div className="app-container">
       <div className="viewport">
-        <Scene project={project} />
+        <Scene 
+            project={project} 
+            focusTarget={{ moduleId: selectedModuleId, face: selectedFace }} 
+        />
         <div className="info-overlay">
           <h1>XBJ Viewer {currentFileName ? `- ${currentFileName}` : ''} {isDirty ? '*' : ''}</h1>
           <p>Full-Stack Ready</p>
@@ -156,6 +187,7 @@ function App() {
         <div className="editor-pane">
           <div className="editor-tabs">
               <button className={activeTab === 'form' ? 'active' : ''} onClick={() => setActiveTab('form')}>Builder</button>
+              <button className={activeTab === 'facade' ? 'active' : ''} onClick={() => setActiveTab('facade')}>Facades</button>
               <button className={activeTab === 'saves' ? 'active' : ''} onClick={() => setActiveTab('saves')}>My Houses</button>
               <button className={activeTab === 'json' ? 'active' : ''} onClick={() => setActiveTab('json')}>JSON</button>
           </div>
@@ -180,9 +212,23 @@ function App() {
              <div style={{ overflowY: 'auto', height: '100%' }}>
                 <SavedHouses saves={saves} onLoad={handleLoad} onDelete={handleDelete} />
              </div>
+          ) : activeTab === 'facade' ? (
+            <div style={{ overflowY: 'auto', height: '100%' }}>
+                <FacadeEditor 
+                    project={project} 
+                    onUpdate={handleProjectUpdate} 
+                    selection={{ moduleId: selectedModuleId, face: selectedFace }}
+                    onSelect={(m, f) => { setSelectedModuleId(m); setSelectedFace(f); }}
+                />
+            </div>
           ) : (
             <div style={{ overflowY: 'auto', height: '100%' }}>
-                <BuilderForm project={project} onUpdate={handleProjectUpdate} />
+                <BuilderForm 
+                    project={project} 
+                    onUpdate={handleProjectUpdate} 
+                    selectedModuleId={selectedModuleId}
+                    onSelectModule={handleModuleSelect}
+                />
             </div>
           )}
         </div>
