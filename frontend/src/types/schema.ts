@@ -30,6 +30,9 @@ export interface RoofConfig {
   
   // For Saltbox: Offset of the peak from center (-0.5 to 0.5)
   peak_offset?: number; 
+
+  // For Shed: Heights of the 4 corners relative to base height (0, 1, 2, 3: FL, FR, BR, BL)
+  corner_heights?: [number, number, number, number];
 }
 
 export interface DimensionConfig {

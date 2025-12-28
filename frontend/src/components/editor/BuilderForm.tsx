@@ -52,6 +52,31 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
 
     const activeModule = project.modules.find(m => m.id === selectedModuleId);
 
+    const handleAddModule = () => {
+        const count = project.modules.length;
+        const newId = `module_${count + 1}`;
+        const newModule: HouseModule = {
+            id: newId,
+            grid: { floors: 1, units: 1, depth: 1 },
+            roof: { type: 'flat', orientation: 'across', height: 0.2, overhang: 0.1, color_hex: "#444444" },
+            attachment: {
+                parent_id: "main",
+                face: "right",
+                origin_x: 0,
+                origin_y: 0
+            }
+        };
+        onUpdate({ ...project, modules: [...project.modules, newModule] });
+        setSelectedModuleId(newId);
+    };
+
+    const handleDeleteModule = () => {
+        if (selectedModuleId === 'main') return;
+        const newModules = project.modules.filter(m => m.id !== selectedModuleId);
+        onUpdate({ ...project, modules: newModules });
+        setSelectedModuleId(newModules[0]?.id || "");
+    };
+
     return (
         <div className="builder-form">
             {/* --- GLOBAL SETTINGS --- */}
@@ -79,11 +104,19 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
 
             {/* --- MODULE SELECTOR --- */}
             <div className="form-section highlight">
-                <h3>🏗️ Edit Module</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3>🏗️ Edit Module</h3>
+                    <div>
+                        <button onClick={handleAddModule} style={{ marginRight: '5px', padding: '4px 8px', fontSize: '0.8rem', background: '#2e7d32' }}>+ Add</button>
+                        {selectedModuleId !== 'main' && (
+                            <button onClick={handleDeleteModule} style={{ padding: '4px 8px', fontSize: '0.8rem', background: '#c62828' }}>Delete</button>
+                        )}
+                    </div>
+                </div>
                 <select 
                     value={selectedModuleId} 
                     onChange={(e) => setSelectedModuleId(e.target.value)}
-                    style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
+                    style={{ width: '100%', padding: '8px' }}
                 >
                     {project.modules.map(m => (
                         <option key={m.id} value={m.id}>{m.id.toUpperCase()}</option>
@@ -96,9 +129,10 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
                     {/* GRID */}
                     <div className="form-group">
                         <h4>📏 Dimensions (Grid)</h4>
-                        <ControlSlider label="Floors" val={activeModule.grid.floors} min={1} max={10} step={1} onChange={(v) => updateModuleGrid(activeModule.id, 'floors', v)} />
-                        <ControlSlider label="Width (Units)" val={activeModule.grid.units} min={1} max={10} step={1} onChange={(v) => updateModuleGrid(activeModule.id, 'units', v)} />
-                        <ControlSlider label="Depth (Cells)" val={activeModule.grid.depth} min={1} max={10} step={1} onChange={(v) => updateModuleGrid(activeModule.id, 'depth', v)} />
+                        {/* Floors usually integer, but Width/Depth can be fractional for smaller extensions */}
+                        <ControlSlider label="Floors" val={activeModule.grid.floors} min={0.5} max={10} step={0.5} onChange={(v) => updateModuleGrid(activeModule.id, 'floors', v)} />
+                        <ControlSlider label="Width (Units)" val={activeModule.grid.units} min={0.2} max={10} step={0.1} onChange={(v) => updateModuleGrid(activeModule.id, 'units', v)} />
+                        <ControlSlider label="Depth (Cells)" val={activeModule.grid.depth} min={0.2} max={10} step={0.1} onChange={(v) => updateModuleGrid(activeModule.id, 'depth', v)} />
                     </div>
 
                     {/* ROOF */}
@@ -113,17 +147,22 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
                                 {ROOF_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
-                        <div className="control-row">
-                            <label>Orient</label>
-                            <select 
-                                value={activeModule.roof.orientation} 
-                                onChange={(e) => updateModuleRoof(activeModule.id, 'orientation', e.target.value)}
-                            >
-                                <option value="across">Across (Side-to-Side)</option>
-                                <option value="along">Along (Front-to-Back)</option>
-                            </select>
-                        </div>
-                        <ControlSlider label="Height (m)" val={activeModule.roof.height} min={0} max={5} step={0.1} onChange={(v) => updateModuleRoof(activeModule.id, 'height', v)} />
+                        
+                        {/* Hide Orientation for Symmetrical types */}
+                        {!['flat', 'pyramid', 'mansard', 'dome'].includes(activeModule.roof.type) && (
+                            <div className="control-row">
+                                <label>Orient</label>
+                                <select 
+                                    value={activeModule.roof.orientation} 
+                                    onChange={(e) => updateModuleRoof(activeModule.id, 'orientation', e.target.value)}
+                                >
+                                    <option value="across">Across (Side-to-Side)</option>
+                                    <option value="along">Along (Front-to-Back)</option>
+                                </select>
+                            </div>
+                        )}
+
+                        <ControlSlider label="Height (m)" val={activeModule.roof.height} min={0.1} max={5} step={0.1} onChange={(v) => updateModuleRoof(activeModule.id, 'height', v)} />
                         <ControlSlider label="Overhang" val={activeModule.roof.overhang} min={0} max={2} step={0.1} onChange={(v) => updateModuleRoof(activeModule.id, 'overhang', v)} />
                         
                         {/* Conditional Roof Params */}
@@ -132,6 +171,30 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate }) => {
                         )}
                         {['mansard', 'gambrel'].includes(activeModule.roof.type) && (
                              <ControlSlider label="Slope Break" val={activeModule.roof.slope_break_ratio ?? 0.5} min={0.1} max={0.9} step={0.1} onChange={(v) => updateModuleRoof(activeModule.id, 'slope_break_ratio', v)} />
+                        )}
+                        {activeModule.roof.type === 'saltbox' && (
+                             <ControlSlider label="Peak Offset" val={activeModule.roof.peak_offset ?? 0.0} min={-0.45} max={0.45} step={0.05} onChange={(v) => updateModuleRoof(activeModule.id, 'peak_offset', v)} />
+                        )}
+                        
+                        {/* Shed 4-Corner Heights */}
+                        {activeModule.roof.type === 'shed' && (
+                            <div className="form-group">
+                                <h5>Corner Heights Offset (FL, FR, BR, BL)</h5>
+                                {/* Need a way to update array. Simple sliders for each index. */}
+                                {[0,1,2,3].map(i => (
+                                    <ControlSlider 
+                                        key={i} 
+                                        label={`Corner ${i+1}`} 
+                                        val={activeModule.roof.corner_heights?.[i] ?? 0} 
+                                        min={-2} max={2} step={0.1} 
+                                        onChange={(v) => {
+                                            const arr = [...(activeModule.roof.corner_heights || [0,0,0,0])];
+                                            arr[i] = v;
+                                            updateModuleRoof(activeModule.id, 'corner_heights', arr);
+                                        }} 
+                                    />
+                                ))}
+                            </div>
                         )}
                         
                         <div className="control-row">
