@@ -29,13 +29,41 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
         if (el.type === 'window' && el.window) {
             const cols = el.window.mullions_cols || 1;
             const rows = el.window.mullions_rows || 1;
+            
+            const rtl = el.window.corner_radius_tl || 0;
+            const rtr = el.window.corner_radius_tr || 0;
+            const rbr = el.window.corner_radius_br || 0;
+            const rbl = el.window.corner_radius_bl || 0;
+
+            // Generate SVG path for rounded/arched shape
+            // Using percentages for coordinates
+            const rad = 50; // max possible radius
+            const getR = (r: number) => r * rad;
+            
+            // Path: Start bottom-center, go around CCW
+            // M 50,100 L 100-rbr,100 A rbr,rbr 0 0 0 100,100-rbr L 100,rtr A rtr,rtr 0 0 0 100-rtr,0 L rtl,0 A rtl,rtl 0 0 0 0,rtl L 0,100-rbl A rbl,rbl 0 0 0 rbl,100 Z
+            const p = `
+                M 50,100 
+                L ${100 - getR(rbr)},100 
+                Q 100,100 100,${100 - getR(rbr)} 
+                L 100,${getR(rtr)} 
+                Q 100,0 ${100 - getR(rtr)},0 
+                L ${getR(rtl)},0 
+                Q 0,0 0,${getR(rtl)} 
+                L 0,${100 - getR(rbl)} 
+                Q 0,100 ${getR(rbl)},100 
+                Z
+            `;
+
             return (
-                <svg width="100%" height="100%" viewBox="0 0 100 100" style={{background: el.window.glass_color || '#aaccff', border: `2px solid ${el.window.frame_color || '#333'}`}}>
+                <svg width="100%" height="100%" viewBox="0 0 100 100">
+                    <path d={p} fill={el.window.glass_color || '#aaccff'} stroke={el.window.frame_color || '#333'} strokeWidth="4" />
+                    {/* Simplified Mullions clipped to bbox */}
                     {Array.from({length: cols - 1}).map((_, i) => (
-                        <line key={`c${i}`} x1={(i+1)*(100/cols)} y1="0" x2={(i+1)*(100/cols)} y2="100" stroke={el.window?.frame_color || '#333'} strokeWidth="2" />
+                        <line key={`c${i}`} x1={(i+1)*(100/cols)} y1="0" x2={(i+1)*(100/cols)} y2="100" stroke={el.window?.frame_color || '#333'} strokeWidth="2" strokeDasharray="2,2" />
                     ))}
                     {Array.from({length: rows - 1}).map((_, i) => (
-                        <line key={`r${i}`} x1="0" y1={(i+1)*(100/rows)} x2="100" y2={(i+1)*(100/rows)} stroke={el.window?.frame_color || '#333'} strokeWidth="2" />
+                        <line key={`r${i}`} x1="0" y1={(i+1)*(100/rows)} x2="100" y2={(i+1)*(100/rows)} stroke={el.window?.frame_color || '#333'} strokeWidth="2" strokeDasharray="2,2" />
                     ))}
                 </svg>
             );
@@ -63,18 +91,23 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
         else if (attFace === 'top') disabledFace = 'bottom'; 
     }
 
+    // --- COORDINATE MAPPING HELPER ---
+    // Maps the Visual Minimap coordinate (u, from left 0..N) 
+    // to the actual Data Grid coordinate (gridX).
+    const mapVisualToGrid = (u: number, _faceStr: string): number => {
+        // Since the 3D rotations in Scene.tsx have been corrected to point outwards,
+        // the visual 'left' (u=0) on the minimap always corresponds to the 
+        // logical grid start (c=0) in 3D.
+        return u;
+    };
+
     // --- OBSTRUCTION LOGIC ---
-    const getObstruction = (u: number, f: number): string | null => {
+    const getObstruction = (visualU: number, f: number): string | null => {
+        const gridX = mapVisualToGrid(visualU, face);
+        
         for (const other of project.modules) {
             if (other.attachment?.parent_id === moduleId && other.attachment.face === face) {
                 const att = other.attachment;
-                
-                // FLIP LOGIC for Back and Left Faces
-                let gridX = u;
-                if (face === 'back' || face === 'left') {
-                    gridX = (Math.ceil(cols) - 1) - u;
-                }
-                
                 const startX = att.origin_x;
                 const startY = att.origin_y;
                 
@@ -93,8 +126,9 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
         return null;
     };
 
-    const updateOverride = (u: number, f: number, faceStr: string, element: FacadeElement | null) => {
-        const key = `${u}_${f}_${faceStr}`;
+    const updateOverride = (visualU: number, f: number, faceStr: string, element: FacadeElement | null) => {
+        const gridX = mapVisualToGrid(visualU, faceStr);
+        const key = `${gridX}_${f}_${faceStr}`;
         const newOverrides = { ...activeModule.facade.overrides };
         if (element === null) delete newOverrides[key];
         else newOverrides[key] = element;
@@ -105,13 +139,15 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
         onUpdate({ ...project, modules: newModules });
     };
 
-    const getCellElement = (u: number, f: number): FacadeElement => {
-        const key = `${u}_${f}_${face}`;
+    const getCellElement = (visualU: number, f: number): FacadeElement => {
+        const gridX = mapVisualToGrid(visualU, face);
+        const key = `${gridX}_${f}_${face}`;
         return activeModule.facade.overrides[key] || activeModule.facade.base_window;
     };
 
-    const isOverridden = (u: number, f: number) => {
-        return !!activeModule.facade.overrides[`${u}_${f}_${face}`];
+    const isOverridden = (visualU: number, f: number) => {
+        const gridX = mapVisualToGrid(visualU, face);
+        return !!activeModule.facade.overrides[`${gridX}_${f}_${face}`];
     };
 
     const activeEl = selectedCell ? getCellElement(selectedCell.u, selectedCell.f) : null;
@@ -130,13 +166,16 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
 
     const switchType = (newType: 'window' | 'door' | 'empty') => {
         const updates: Partial<FacadeElement> = { type: newType };
-        if (newType === 'door' && !activeEl?.door) {
+        if (newType === 'door') {
             updates.door = { leafs: 1, has_window: false, color: '#442211' };
             updates.height_ratio = 0.85; 
             updates.width_ratio = 0.7;
-        }
-        if (newType === 'window' && !activeEl?.window) {
+            updates.offset_y = -0.075; // Anchor to bottom approx
+        } else if (newType === 'window') {
             updates.window = { mullions_cols: 2, mullions_rows: 2, frame_color: '#333' };
+            updates.height_ratio = 0.6;
+            updates.width_ratio = 0.6;
+            updates.offset_y = 0;
         }
         updateActiveEl(updates);
     };
@@ -271,6 +310,13 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
 
                     {activeEl.type === 'window' && activeEl.window && (
                         <div className="form-group">
+                            <h5>Shape & Grid</h5>
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'5px'}}>
+                                <ControlSlider label="TL" val={activeEl.window.corner_radius_tl || 0} min={0} max={1} step={0.1} onChange={(v) => updateActiveDetail('window', 'corner_radius_tl', v)} />
+                                <ControlSlider label="TR" val={activeEl.window.corner_radius_tr || 0} min={0} max={1} step={0.1} onChange={(v) => updateActiveDetail('window', 'corner_radius_tr', v)} />
+                                <ControlSlider label="BL" val={activeEl.window.corner_radius_bl || 0} min={0} max={1} step={0.1} onChange={(v) => updateActiveDetail('window', 'corner_radius_bl', v)} />
+                                <ControlSlider label="BR" val={activeEl.window.corner_radius_br || 0} min={0} max={1} step={0.1} onChange={(v) => updateActiveDetail('window', 'corner_radius_br', v)} />
+                            </div>
                             <h5>Mullions</h5>
                             <ControlSlider label="Cols" val={activeEl.window.mullions_cols} min={1} max={5} step={1} onChange={(v) => updateActiveDetail('window', 'mullions_cols', v)} />
                             <ControlSlider label="Rows" val={activeEl.window.mullions_rows} min={1} max={5} step={1} onChange={(v) => updateActiveDetail('window', 'mullions_rows', v)} />
@@ -291,7 +337,7 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
                                 <label>Win</label>
                                 <input type="checkbox" checked={activeEl.door.has_window} onChange={(e) => updateActiveDetail('door', 'has_window', e.target.checked)} />
                             </div>
-                        </div>
+                        </div >
                     )}
 
                     <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>

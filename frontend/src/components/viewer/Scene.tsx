@@ -146,8 +146,8 @@ const HouseModuleRenderer: React.FC<{
         
         if (face === 'front') pos = [0, 0, depth/2];
         else if (face === 'back') { pos = [0, 0, -depth/2]; rot = [0, Math.PI, 0]; }
-        else if (face === 'right') { pos = [width/2, 0, 0]; rot = [0, -Math.PI/2, 0]; }
-        else if (face === 'left') { pos = [-width/2, 0, 0]; rot = [0, Math.PI/2, 0]; }
+        else if (face === 'right') { pos = [width/2, 0, 0]; rot = [0, Math.PI/2, 0]; }
+        else if (face === 'left') { pos = [-width/2, 0, 0]; rot = [0, -Math.PI/2, 0]; }
 
         for (let f = 0; f < floors; f++) {
             for (let c = 0; c < cols; c++) {
@@ -181,7 +181,7 @@ const HouseModuleRenderer: React.FC<{
                     const y = cy + (elDef.offset_y * cellRealH);
 
                     elements.push(
-                        <group key={key} position={[x, y, 0.05]}> 
+                        <group key={key} position={[x, y, 0.1]}> 
                             <ElementRenderer el={elDef} width={cellRealW} height={cellRealH} />
                         </group>
                     );

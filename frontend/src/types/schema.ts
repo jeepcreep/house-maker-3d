@@ -1,11 +1,17 @@
 // --- FACADE ELEMENTS ---
 
 export interface WindowConfig {
-  mullions_cols: number; // 1 = no split (just frame)
+  mullions_cols: number; 
   mullions_rows: number;
   frame_color?: string;
   glass_color?: string;
-  transom_height?: number; // Optional horizontal bar height (0.0 - 1.0)
+  transom_height?: number; 
+  
+  // Corner Radii (0.0 = Square, 1.0 = Max Radius)
+  corner_radius_tl?: number;
+  corner_radius_tr?: number;
+  corner_radius_bl?: number;
+  corner_radius_br?: number;
 }
 
 export interface DoorConfig {
