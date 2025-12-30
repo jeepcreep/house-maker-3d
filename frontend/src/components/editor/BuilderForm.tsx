@@ -32,6 +32,34 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModule
         onUpdate({ ...project, modules: newModules });
     };
 
+    const updateTimbering = (id: string, key: string, value: any) => {
+        const m = project.modules.find(mod => mod.id === id);
+        if (!m) return;
+        const currentTimber = m.facade.timbering || { 
+            enabled: false, 
+            color: '#443322', 
+            beam_width: 0.15, 
+            patterns: ['frame'],
+            faces: { front: true, back: true, left: true, right: true } 
+        };
+        
+        // Ensure enabled is true if we are editing props, unless explicitly disabling
+        let newTimber = { ...currentTimber, [key]: value };
+        if (key === 'enabled' && value === true && !m.facade.timbering) {
+             // Defaults
+             newTimber = { 
+                 enabled: true, 
+                 color: '#443322', 
+                 beam_width: 0.15, 
+                 patterns: ['frame'],
+                 floors_indices: Array.from({length: Math.ceil(m.grid.floors)}, (_, i) => i),
+                 faces: { front: true, back: true, left: true, right: true }
+             };
+        }
+        
+        updateModule(id, { facade: { ...m.facade, timbering: newTimber as any } });
+    };
+
     const updateModuleGrid = (id: string, key: string, value: number) => {
         const m = project.modules.find(mod => mod.id === id);
         if (!m) return;
@@ -42,6 +70,42 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModule
         const m = project.modules.find(mod => mod.id === id);
         if (!m) return;
         updateModule(id, { roof: { ...m.roof, [key]: value } });
+    };
+
+    const addDormer = (moduleId: string) => {
+        const m = project.modules.find(mod => mod.id === moduleId);
+        if (!m) return;
+        const newDormer = {
+            id: `d_${Date.now()}`,
+            face: 'front',
+            position: 0.5,
+            elevation: 0.5,
+            y_offset: -2.0,
+            rotation_y: 0, // Default for front
+            rotation_x: 0,
+            width: 1.5,
+            height: 1.5,
+            type: 'gabled',
+            color: '#F0F0F0',
+            roof_color: '#333333',
+            window: { mullions_cols: 2, mullions_rows: 2 }
+        };
+        const dormers = [...(m.roof.dormers || []), newDormer];
+        updateModuleRoof(moduleId, 'dormers', dormers);
+    };
+
+    const removeDormer = (moduleId: string, dId: string) => {
+        const m = project.modules.find(mod => mod.id === moduleId);
+        if (!m) return;
+        const dormers = (m.roof.dormers || []).filter(d => d.id !== dId);
+        updateModuleRoof(moduleId, 'dormers', dormers);
+    };
+
+    const updateDormer = (moduleId: string, dId: string, updates: any) => {
+        const m = project.modules.find(mod => mod.id === moduleId);
+        if (!m) return;
+        const dormers = (m.roof.dormers || []).map(d => d.id === dId ? { ...d, ...updates } : d);
+        updateModuleRoof(moduleId, 'dormers', dormers);
     };
 
     const updateAttachment = (id: string, key: string, value: any) => {
@@ -209,6 +273,52 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModule
                             <label>Color</label>
                             <input type="color" value={activeModule.roof.color_hex} onChange={(e) => updateModuleRoof(activeModule.id, 'color_hex', e.target.value)} />
                         </div>
+
+                        {/* DORMERS */}
+                        <div style={{ marginTop: '10px', borderTop: '1px solid #444', paddingTop: '5px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <h5>Dormers</h5>
+                                <button onClick={() => addDormer(activeModule.id)} style={{ padding: '2px 5px', fontSize: '0.7rem' }}>+ Add</button>
+                            </div>
+                            {(activeModule.roof.dormers || []).map((d, i) => (
+                                <div key={d.id} style={{ background: '#222', padding: '5px', marginBottom: '5px', borderRadius: '4px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ fontSize: '0.8rem' }}>#{i+1}</span>
+                                        <button onClick={() => removeDormer(activeModule.id, d.id)} style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>x</button>
+                                    </div>
+                                    <div className="control-row">
+                                        <label>Face</label>
+                                        <select value={d.face} onChange={(e) => updateDormer(activeModule.id, d.id, { face: e.target.value })}>
+                                            {FACES.slice(0, 4).map(f => <option key={f} value={f}>{f}</option>)}
+                                        </select>
+                                    </div>
+                                    <ControlSlider label="Pos" val={d.position} min={0} max={1} step={0.05} onChange={(v) => updateDormer(activeModule.id, d.id, { position: v })} />
+                                    <ControlSlider label="Elev" val={d.elevation} min={0} max={1} step={0.05} onChange={(v) => updateDormer(activeModule.id, d.id, { elevation: v })} />
+                                    <ControlSlider label="Lift Y" val={d.y_offset || 0} min={-4} max={4} step={0.1} onChange={(v) => updateDormer(activeModule.id, d.id, { y_offset: v })} />
+                                    <ControlSlider label="Rotate Y" val={d.rotation_y || 0} min={-180} max={180} step={1} onChange={(v) => updateDormer(activeModule.id, d.id, { rotation_y: v })} />
+                                    <ControlSlider label="Rotate X" val={d.rotation_x || 0} min={-180} max={180} step={1} onChange={(v) => updateDormer(activeModule.id, d.id, { rotation_x: v })} />
+                                    <div className="control-row">
+                                        <label>Type</label>
+                                        <select value={d.type} onChange={(e) => updateDormer(activeModule.id, d.id, { type: e.target.value })}>
+                                            <option value="gabled">Gabled</option>
+                                            <option value="shed">Shed</option>
+                                            <option value="flat">Flat</option>
+                                            <option value="skylight">Skylight</option>
+                                        </select>
+                                    </div>
+                                    <ControlSlider label="W" val={d.width} min={0.5} max={3} step={0.1} onChange={(v) => updateDormer(activeModule.id, d.id, { width: v })} />
+                                    <ControlSlider label="H" val={d.height} min={0.5} max={3} step={0.1} onChange={(v) => updateDormer(activeModule.id, d.id, { height: v })} />
+                                    <div className="control-row">
+                                        <label>Wall Col</label>
+                                        <input type="color" value={d.color || '#F0F0F0'} onChange={(e) => updateDormer(activeModule.id, d.id, { color: e.target.value })} />
+                                    </div>
+                                    <div className="control-row">
+                                        <label>Roof Col</label>
+                                        <input type="color" value={d.roof_color || '#333333'} onChange={(e) => updateDormer(activeModule.id, d.id, { roof_color: e.target.value })} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* ATTACHMENT (If not root) */}
@@ -246,6 +356,85 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModule
                         <div className="control-row">
                             <label>Wall Color</label>
                             <input type="color" value={activeModule.wall_color_hex || "#F0F0F0"} onChange={(e) => updateModule(activeModule.id, { wall_color_hex: e.target.value })} />
+                        </div>
+                        
+                        <div style={{ marginTop: '10px', borderTop: '1px solid #444', paddingTop: '5px' }}>
+                            <div className="control-row">
+                                <label>Timbering</label>
+                                <input 
+                                    type="checkbox" 
+                                    checked={activeModule.facade.timbering?.enabled || false} 
+                                    onChange={(e) => updateTimbering(activeModule.id, 'enabled', e.target.checked)} 
+                                />
+                            </div>
+                            {activeModule.facade.timbering?.enabled && (
+                                <div style={{ paddingLeft: '10px' }}>
+                                    <div className="control-row">
+                                        <label>Patterns</label>
+                                        <div style={{display:'flex', gap:'5px', fontSize:'0.7rem'}}>
+                                            <label><input type="checkbox" checked={activeModule.facade.timbering.patterns.includes('frame')} onChange={(e) => {
+                                                let p = [...activeModule.facade.timbering!.patterns];
+                                                if(e.target.checked && !p.includes('frame')) p.push('frame');
+                                                else if(!e.target.checked) p = p.filter(x => x!=='frame');
+                                                updateTimbering(activeModule.id, 'patterns', p);
+                                            }} /> Frame</label>
+                                            <label><input type="checkbox" checked={activeModule.facade.timbering.patterns.includes('cross')} onChange={(e) => {
+                                                let p = [...activeModule.facade.timbering!.patterns];
+                                                if(e.target.checked && !p.includes('cross')) p.push('cross');
+                                                else if(!e.target.checked) p = p.filter(x => x!=='cross');
+                                                updateTimbering(activeModule.id, 'patterns', p);
+                                            }} /> X</label>
+                                            <label><input type="checkbox" checked={activeModule.facade.timbering.patterns.includes('diamond')} onChange={(e) => {
+                                                let p = [...activeModule.facade.timbering!.patterns];
+                                                if(e.target.checked && !p.includes('diamond')) p.push('diamond');
+                                                else if(!e.target.checked) p = p.filter(x => x!=='diamond');
+                                                updateTimbering(activeModule.id, 'patterns', p);
+                                            }} /> ◇</label>
+                                        </div>
+                                    </div>
+                                    <div className="control-row">
+                                        <label>Faces</label>
+                                        <div style={{display:'flex', gap:'5px', fontSize:'0.7rem'}}>
+                                            {FACES.slice(0,4).map(f => (
+                                                <label key={f}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={activeModule.facade.timbering!.faces[f as keyof typeof activeModule.facade.timbering.faces]} 
+                                                        onChange={(e) => {
+                                                            const newFaces = { ...activeModule.facade.timbering!.faces, [f]: e.target.checked };
+                                                            updateTimbering(activeModule.id, 'faces', newFaces);
+                                                        }} 
+                                                    /> {f[0].toUpperCase()}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="control-row">
+                                        <label>Floors</label>
+                                        <div style={{display:'flex', gap:'5px', fontSize:'0.7rem', flexWrap:'wrap'}}>
+                                            {Array.from({length: Math.ceil(activeModule.grid.floors)}).map((_, i) => (
+                                                <label key={i}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={activeModule.facade.timbering!.floors_indices?.includes(i)} 
+                                                        onChange={(e) => {
+                                                            let floors = activeModule.facade.timbering!.floors_indices || [];
+                                                            if (e.target.checked && !floors.includes(i)) floors = [...floors, i];
+                                                            else if (!e.target.checked) floors = floors.filter(f => f !== i);
+                                                            updateTimbering(activeModule.id, 'floors_indices', floors);
+                                                        }} 
+                                                    /> {i+1}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <ControlSlider label="Beam W" val={activeModule.facade.timbering.beam_width} min={0.05} max={0.3} step={0.01} onChange={(v) => updateTimbering(activeModule.id, 'beam_width', v)} />
+                                    <div className="control-row">
+                                        <label>Color</label>
+                                        <input type="color" value={activeModule.facade.timbering.color} onChange={(e) => updateTimbering(activeModule.id, 'color', e.target.value)} />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

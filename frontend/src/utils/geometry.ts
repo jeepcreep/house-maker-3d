@@ -1,10 +1,171 @@
 import * as THREE from 'three';
-import type { RoofConfig } from '../types/schema';
+import type { RoofConfig, TimberConfig, ElementOverrideMap } from '../types/schema';
 
 function extrudeProfile(shape: THREE.Shape, depth: number, center: boolean = true) {
     const geo = new THREE.ExtrudeGeometry(shape, { steps: 1, depth: depth, bevelEnabled: false });
     if (center) geo.translate(0, 0, -depth / 2);
     return geo;
+}
+
+export function createTimberGeometry(
+    w: number, h: number, d: number,
+    grid: { units: number, floors: number, depth: number },
+    config: TimberConfig,
+    overrides?: ElementOverrideMap
+) {
+    const group = new THREE.Group();
+    if (!config.enabled) return group;
+
+    const bw = config.beam_width || 0.15;
+    const bd = 0.05; // Stick out depth
+    const mat = new THREE.MeshStandardMaterial({ color: config.color || "#443322" });
+
+    // Helper: Add Beam (Box) from P1 to P2
+    const addBeam = (p1: THREE.Vector3, p2: THREE.Vector3) => {
+        const vec = new THREE.Vector3().subVectors(p2, p1);
+        const len = vec.length();
+        const center = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        
+        const geo = new THREE.BoxGeometry(bw, bw, len);
+        const mesh = new THREE.Mesh(geo, mat);
+        
+        // Orient
+        mesh.position.copy(center);
+        mesh.lookAt(p2); 
+        group.add(mesh);
+    };
+
+    // Helper: Process Face
+    const processFace = (origin: THREE.Vector3, uVec: THREE.Vector3, vVec: THREE.Vector3, c: number, r: number, faceName: 'front'|'back'|'left'|'right') => {
+        if (!config.faces?.[faceName]) return;
+
+        const cellWVec = uVec.clone().divideScalar(c);
+        const cellHVec = vVec.clone().divideScalar(r);
+
+        // Grid Points
+        const getP = (i: number, j: number) => {
+            return origin.clone()
+                .add(cellWVec.clone().multiplyScalar(i))
+                .add(cellHVec.clone().multiplyScalar(j));
+        };
+
+        const hasFrame = config.patterns.includes('frame');
+        const hasCross = config.patterns.includes('cross');
+        const hasDiamond = config.patterns.includes('diamond');
+        
+        // Filter Floors
+        // config.floors_indices usually [0, 1, 2...]
+        // r is total rows.
+        // We iterate j from 0 to r-1.
+        // Check if j is in floors_indices.
+        
+        // Frame Verticals (span floor)
+        if (hasFrame) {
+            for (let j = 0; j < r; j++) {
+                if (!config.floors_indices?.includes(j)) continue;
+                for (let i = 0; i <= c; i++) {
+                     addBeam(getP(i, j), getP(i, j+1));
+                }
+            }
+            // Frame Horizontals
+            for (let j = 0; j <= r; j++) {
+                // Horizontal at floor j.
+                // Should we show beam at j if j or j-1 is active?
+                // Usually horizontal beam separates floors.
+                // Let's say we show bottom beam of active floor?
+                // Or top beam?
+                // Let's show bottom beam (j) and top beam (j+1) for each active floor j.
+                // To avoid duplicates, track created?
+                // Simpler: iterate active floors, add bottom and top.
+                // Overlap is fine (Mesh intersection).
+                
+                if (config.floors_indices?.includes(j) || (j>0 && config.floors_indices?.includes(j-1))) {
+                    for (let i = 0; i < c; i++) {
+                        addBeam(getP(i, j), getP(i+1, j)); // Segment per cell to match vertical grid? Or one long beam? Segment is easier.
+                    }
+                }
+            }
+        }
+
+        // Patterns inside cells
+        if (hasCross || hasDiamond) {
+            for (let i = 0; i < c; i++) {
+                for (let j = 0; j < r; j++) {
+                    if (!config.floors_indices?.includes(j)) continue;
+
+                    // Check intersection
+                    // Mapping Visual Grid (i, j) to Data Grid
+                    // Visual U (i) is usually Data Grid X.
+                    // But in Scene.tsx rendering, we map differently?
+                    // Scene.tsx:
+                    // Front: c=0..units. Visual Left=0. Data=0.
+                    // Back: c=0..units. Rotated Y=180. Visual Left=0. Data=0 (Scene renders 0 to Units).
+                    // So Data Index is i.
+                    
+                    const key = `${i}_${j}_${faceName}`;
+                    const hasOpening = overrides && overrides[key] && overrides[key].type !== 'empty';
+                    
+                    if (hasOpening) continue; // Skip inner pattern if window/door exists
+
+                    const bl = getP(i, j);
+                    const br = getP(i+1, j);
+                    const tl = getP(i, j+1);
+                    const tr = getP(i+1, j+1);
+                    
+                    if (hasCross) {
+                        addBeam(bl, tr);
+                        addBeam(br, tl);
+                    } 
+                    // Can have BOTH? Yes user said not mutually exclusive.
+                    if (hasDiamond) {
+                        const midB = bl.clone().add(br).multiplyScalar(0.5);
+                        const midT = tl.clone().add(tr).multiplyScalar(0.5);
+                        const midL = bl.clone().add(tl).multiplyScalar(0.5);
+                        const midR = br.clone().add(tr).multiplyScalar(0.5);
+                        
+                        addBeam(midB, midL);
+                        addBeam(midL, midT);
+                        addBeam(midT, midR);
+                        addBeam(midR, midB);
+                    }
+                }
+            }
+        }
+    };
+
+    const cols = Math.ceil(grid.units);
+    const rows = Math.ceil(grid.floors);
+    const dCols = Math.ceil(grid.depth);
+
+    processFace(
+        new THREE.Vector3(-w/2, -h/2, d/2 + bd/2), 
+        new THREE.Vector3(w, 0, 0), 
+        new THREE.Vector3(0, h, 0), 
+        cols, rows, 'front'
+    );
+
+    processFace(
+        new THREE.Vector3(w/2, -h/2, -d/2 - bd/2), 
+        new THREE.Vector3(-w, 0, 0), 
+        new THREE.Vector3(0, h, 0), 
+        cols, rows, 'back'
+    );
+
+    processFace(
+        new THREE.Vector3(w/2 + bd/2, -h/2, d/2), 
+        new THREE.Vector3(0, 0, -d), 
+        new THREE.Vector3(0, h, 0), 
+        dCols, rows, 'right'
+    );
+
+    processFace(
+        new THREE.Vector3(-w/2 - bd/2, -h/2, -d/2), 
+        new THREE.Vector3(0, 0, d), 
+        new THREE.Vector3(0, h, 0), 
+        dCols, rows, 'left'
+    );
+
+    return group;
 }
 
 export function createRoofGeometry(width: number, depth: number, config: RoofConfig) {

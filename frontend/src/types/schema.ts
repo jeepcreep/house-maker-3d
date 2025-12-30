@@ -1,17 +1,48 @@
 // --- FACADE ELEMENTS ---
 
+export interface ShutterConfig {
+  color: string;
+  style: 'louvred' | 'panel' | 'board';
+  open: boolean; 
+}
+
 export interface WindowConfig {
   mullions_cols: number; 
   mullions_rows: number;
   frame_color?: string;
   glass_color?: string;
   transom_height?: number; 
+  shutters?: ShutterConfig;
   
   // Corner Radii (0.0 = Square, 1.0 = Max Radius)
   corner_radius_tl?: number;
   corner_radius_tr?: number;
   corner_radius_bl?: number;
   corner_radius_br?: number;
+}
+
+export interface BalconyConfig {
+  depth: number; // How far it sticks out (meters approx, or relative)
+  railing_height: number; 
+  railing_type: 'glass' | 'bars' | 'solid';
+  floor_color?: string;
+  railing_color?: string;
+}
+
+export interface PorchConfig {
+  depth: number;
+  width_ratio: number; // Relative to cell width
+  eaves_height: number; // Height of columns
+  roof_shape: 'flat' | 'gabled' | 'shed';
+  roof_color?: string;
+  deck_height: number; // Height of floor base
+}
+
+export interface StairConfig {
+  width_ratio: number; 
+  height: number; // Total height drop
+  depth: number; // Total run length
+  color?: string;
 }
 
 export interface DoorConfig {
@@ -35,6 +66,9 @@ export interface FacadeElement {
   // Details
   window?: WindowConfig;
   door?: DoorConfig;
+  balcony?: BalconyConfig;
+  porch?: PorchConfig;
+  stairs?: StairConfig;
 }
 
 // Map of "x,y,face" -> Element
@@ -43,9 +77,21 @@ export interface ElementOverrideMap {
   [key: string]: FacadeElement;
 }
 
+export interface TimberConfig {
+  enabled: boolean;
+  color: string;
+  beam_width: number;
+  patterns: ('frame' | 'cross' | 'diamond')[];
+  floors_indices: number[]; // e.g. [0, 1]
+  faces: { front: boolean; back: boolean; left: boolean; right: boolean; };
+}
+
 export interface ModuleFacadeConfig {
   // Global Pattern for this module
   pattern: 'empty' | 'fill_window' | 'ground_commercial';
+  
+  // Timbering
+  timbering?: TimberConfig;
   
   // Base Style for Pattern Elements
   base_window: FacadeElement;
@@ -60,6 +106,22 @@ export interface ModuleFacadeConfig {
 export type RoofType = 'flat' | 'gabled' | 'hipped' | 'half_hipped' | 'pyramid' | 'gambrel' | 'mansard' | 'shed' | 'saltbox' | 'round' | 'dome';
 export type RoofOrientation = 'along' | 'across'; 
 
+export interface DormerConfig {
+  id: string;
+  face: 'front' | 'back' | 'left' | 'right';
+  position: number; // 0.0 to 1.0 (Horizontal center)
+  elevation: number; // 0.0 to 1.0 (Vertical up the slope)
+  y_offset?: number; // Manual vertical adjustment
+  rotation_y?: number; // Manual Y rotation
+  rotation_x?: number; // Manual X rotation
+  width: number; 
+  height: number;
+  type: 'gabled' | 'shed' | 'flat' | 'arched' | 'skylight';
+  color?: string; // Wall color
+  roof_color?: string; // New: Roof color
+  window: WindowConfig;
+}
+
 export interface RoofConfig {
   type: RoofType;
   orientation: RoofOrientation;
@@ -70,6 +132,7 @@ export interface RoofConfig {
   slope_break_ratio?: number; 
   peak_offset?: number; 
   corner_heights?: [number, number, number, number];
+  dormers?: DormerConfig[];
 }
 
 export interface DimensionConfig {

@@ -95,9 +95,6 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
     // Maps the Visual Minimap coordinate (u, from left 0..N) 
     // to the actual Data Grid coordinate (gridX).
     const mapVisualToGrid = (u: number, _faceStr: string): number => {
-        // Since the 3D rotations in Scene.tsx have been corrected to point outwards,
-        // the visual 'left' (u=0) on the minimap always corresponds to the 
-        // logical grid start (c=0) in 3D.
         return u;
     };
 
@@ -117,7 +114,30 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
                 const widthCover = (face === 'front' || face === 'back') ? cU : cD;
                 const heightCover = other.grid.floors;
                 
-                if (gridX >= startX && gridX < startX + widthCover &&
+                // Coordinate Mapping for Obstruction
+                // Front/Right: Window Grid matches Attachment Grid.
+                // Back/Left: Window Grid runs opposite to Attachment Grid.
+                
+                let minWindowX = startX;
+                let maxWindowX = startX + widthCover; // Exclusive
+                
+                if (face === 'back' || face === 'left') {
+                    const totalWinUnits = (face === 'left') ? activeModule.grid.depth : activeModule.grid.units;
+                    // Attachment [startX, startX+width] maps to:
+                    // Window [total - (startX+width), total - startX]
+                    // Need ceil because grid is integer based?
+                    // Window Grid indices are 0, 1, 2...
+                    // Let's use simple inversion logic for the RANGE.
+                    
+                    const t = Math.ceil(totalWinUnits);
+                    const endX = startX + widthCover;
+                    
+                    // Inverted range
+                    minWindowX = t - endX;
+                    maxWindowX = t - startX;
+                }
+
+                if (gridX >= minWindowX && gridX < maxWindowX &&
                     f >= startY && f < startY + heightCover) {
                     return other.id;
                 }
@@ -320,6 +340,44 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
                             <h5>Mullions</h5>
                             <ControlSlider label="Cols" val={activeEl.window.mullions_cols} min={1} max={5} step={1} onChange={(v) => updateActiveDetail('window', 'mullions_cols', v)} />
                             <ControlSlider label="Rows" val={activeEl.window.mullions_rows} min={1} max={5} step={1} onChange={(v) => updateActiveDetail('window', 'mullions_rows', v)} />
+                            
+                            {/* SHUTTERS */}
+                            <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #333' }}>
+                                <div className="control-row">
+                                    <label>Shutters</label>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={!!activeEl.window.shutters} 
+                                        onChange={(e) => {
+                                            if (e.target.checked) updateActiveDetail('window', 'shutters', { color: '#553322', style: 'louvred', open: true });
+                                            else updateActiveDetail('window', 'shutters', undefined);
+                                        }} 
+                                    />
+                                </div>
+                                {activeEl.window.shutters && (
+                                    <div style={{ paddingLeft: '10px' }}>
+                                        <div className="control-row">
+                                            <label>Style</label>
+                                            <select 
+                                                value={activeEl.window.shutters.style} 
+                                                onChange={(e) => updateActiveDetail('window', 'shutters', { ...activeEl.window!.shutters, style: e.target.value })}
+                                            >
+                                                <option value="louvred">Louvred</option>
+                                                <option value="panel">Panel</option>
+                                                <option value="board">Board</option>
+                                            </select>
+                                        </div>
+                                        <div className="control-row">
+                                            <label>Color</label>
+                                            <input type="color" value={activeEl.window.shutters.color} onChange={(e) => updateActiveDetail('window', 'shutters', { ...activeEl.window!.shutters, color: e.target.value })} />
+                                        </div>
+                                        <div className="control-row">
+                                            <label>Open</label>
+                                            <input type="checkbox" checked={activeEl.window.shutters.open !== false} onChange={(e) => updateActiveDetail('window', 'shutters', { ...activeEl.window!.shutters, open: e.target.checked })} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -338,6 +396,128 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
                                 <input type="checkbox" checked={activeEl.door.has_window} onChange={(e) => updateActiveDetail('door', 'has_window', e.target.checked)} />
                             </div>
                         </div >
+                    )}
+
+                    {/* BALCONY SECTION */}
+                    {activeEl.type !== 'empty' && (
+                        <div className="form-group" style={{ borderTop: '1px solid #444', marginTop: '10px', paddingTop: '5px' }}>
+                            <div className="control-row">
+                                <label>Balcony</label>
+                                <input 
+                                    type="checkbox" 
+                                    checked={!!activeEl.balcony} 
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            updateActiveEl({ balcony: { depth: 1.0, railing_height: 1.0, railing_type: 'glass', floor_color: '#555555', railing_color: '#333333' } });
+                                        } else {
+                                            updateActiveEl({ balcony: undefined });
+                                        }
+                                    }} 
+                                />
+                            </div>
+                            
+                            {activeEl.balcony && (
+                                <div style={{ paddingLeft: '10px', borderLeft: '2px solid #555' }}>
+                                    <div className="control-row">
+                                        <label>Type</label>
+                                        <select 
+                                            value={activeEl.balcony.railing_type} 
+                                            onChange={(e) => updateActiveEl({ balcony: { ...activeEl.balcony!, railing_type: e.target.value as any } })}
+                                        >
+                                            <option value="glass">Glass</option>
+                                            <option value="bars">Bars</option>
+                                            <option value="solid">Solid</option>
+                                        </select>
+                                    </div>
+                                    <ControlSlider label="Depth" val={activeEl.balcony.depth} min={0.5} max={3.0} step={0.1} onChange={(v) => updateActiveEl({ balcony: { ...activeEl.balcony!, depth: v } })} />
+                                    <ControlSlider label="Rail H" val={activeEl.balcony.railing_height} min={0.5} max={1.5} step={0.1} onChange={(v) => updateActiveEl({ balcony: { ...activeEl.balcony!, railing_height: v } })} />
+                                    
+                                    <div className="control-row">
+                                        <label>Floor</label>
+                                        <input type="color" value={activeEl.balcony.floor_color} onChange={(e) => updateActiveEl({ balcony: { ...activeEl.balcony!, floor_color: e.target.value } })} />
+                                    </div>
+                                    <div className="control-row">
+                                        <label>Rail</label>
+                                        <input type="color" value={activeEl.balcony.railing_color} onChange={(e) => updateActiveEl({ balcony: { ...activeEl.balcony!, railing_color: e.target.value } })} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* PORCH SECTION */}
+                    {activeEl.type === 'door' && (
+                        <div className="form-group" style={{ borderTop: '1px solid #444', marginTop: '10px', paddingTop: '5px' }}>
+                            <div className="control-row">
+                                <label>Porch</label>
+                                <input 
+                                    type="checkbox" 
+                                    checked={!!activeEl.porch} 
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            updateActiveEl({ porch: { depth: 1.5, width_ratio: 1.2, eaves_height: 2.5, roof_shape: 'gabled', deck_height: 0.2, roof_color: '#333333' } });
+                                        } else {
+                                            updateActiveEl({ porch: undefined });
+                                        }
+                                    }} 
+                                />
+                            </div>
+                            
+                            {activeEl.porch && (
+                                <div style={{ paddingLeft: '10px', borderLeft: '2px solid #555' }}>
+                                    <div className="control-row">
+                                        <label>Shape</label>
+                                        <select 
+                                            value={activeEl.porch.roof_shape} 
+                                            onChange={(e) => updateActiveEl({ porch: { ...activeEl.porch!, roof_shape: e.target.value as any } })}
+                                        >
+                                            <option value="flat">Flat</option>
+                                            <option value="gabled">Gabled</option>
+                                            <option value="shed">Shed</option>
+                                        </select>
+                                    </div>
+                                    <ControlSlider label="Depth" val={activeEl.porch.depth} min={0.5} max={4.0} step={0.1} onChange={(v) => updateActiveEl({ porch: { ...activeEl.porch!, depth: v } })} />
+                                    <ControlSlider label="W-Ratio" val={activeEl.porch.width_ratio} min={1.0} max={3.0} step={0.1} onChange={(v) => updateActiveEl({ porch: { ...activeEl.porch!, width_ratio: v } })} />
+                                    <ControlSlider label="Eaves H" val={activeEl.porch.eaves_height} min={2.0} max={4.0} step={0.1} onChange={(v) => updateActiveEl({ porch: { ...activeEl.porch!, eaves_height: v } })} />
+                                    <div className="control-row">
+                                        <label>Roof Col</label>
+                                        <input type="color" value={activeEl.porch.roof_color} onChange={(e) => updateActiveEl({ porch: { ...activeEl.porch!, roof_color: e.target.value } })} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* STAIRS SECTION */}
+                    {activeEl.type === 'door' && (
+                        <div className="form-group" style={{ borderTop: '1px solid #444', marginTop: '10px', paddingTop: '5px' }}>
+                            <div className="control-row">
+                                <label>Stairs</label>
+                                <input 
+                                    type="checkbox" 
+                                    checked={!!activeEl.stairs} 
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            updateActiveEl({ stairs: { width_ratio: 1.0, height: 1.0, depth: 1.0, color: '#777777' } });
+                                        } else {
+                                            updateActiveEl({ stairs: undefined });
+                                        }
+                                    }} 
+                                />
+                            </div>
+                            
+                            {activeEl.stairs && (
+                                <div style={{ paddingLeft: '10px', borderLeft: '2px solid #555' }}>
+                                    <ControlSlider label="Height" val={activeEl.stairs.height} min={0.2} max={3.0} step={0.1} onChange={(v) => updateActiveEl({ stairs: { ...activeEl.stairs!, height: v } })} />
+                                    <ControlSlider label="Depth" val={activeEl.stairs.depth} min={0.5} max={3.0} step={0.1} onChange={(v) => updateActiveEl({ stairs: { ...activeEl.stairs!, depth: v } })} />
+                                    <ControlSlider label="Width %" val={activeEl.stairs.width_ratio} min={0.5} max={2.0} step={0.1} onChange={(v) => updateActiveEl({ stairs: { ...activeEl.stairs!, width_ratio: v } })} />
+                                    <div className="control-row">
+                                        <label>Color</label>
+                                        <input type="color" value={activeEl.stairs.color} onChange={(e) => updateActiveEl({ stairs: { ...activeEl.stairs!, color: e.target.value } })} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>

@@ -3,8 +3,8 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Sky, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import type { HouseProject, HouseModule, DimensionConfig, FacadeElement } from '../../types/schema';
-import { createRoofGeometry } from '../../utils/geometry';
-import { createWindowGeometry, createDoorGeometry } from '../../utils/elements';
+import { createRoofGeometry, createTimberGeometry } from '../../utils/geometry';
+import { createWindowGeometry, createDoorGeometry, createBalconyGeometry, createPorchGeometry, createStairGeometry, createDormerGeometry, createSkylightGeometry } from '../../utils/elements';
 
 // Helper: Get dimensions of a specific module
 function getModuleDims(module: HouseModule, dims: DimensionConfig) {
@@ -26,15 +26,45 @@ function getModuleDims(module: HouseModule, dims: DimensionConfig) {
 }
 
 // Sub-component to render a specific Facade Element
-const ElementRenderer: React.FC<{ el: FacadeElement, width: number, height: number }> = ({ el, width, height }) => {
+const ElementRenderer: React.FC<{ el: FacadeElement, width: number, height: number, wallColor?: string }> = ({ el, width, height, wallColor }) => {
     const realW = width * el.width_ratio;
     const realH = height * el.height_ratio;
     
     // Geometry Generation
     const meshGroup = useMemo(() => {
-        if (el.type === 'window') return createWindowGeometry(el, realW, realH);
-        if (el.type === 'door') return createDoorGeometry(el, realW, realH);
-        return new THREE.Group();
+        let g = new THREE.Group();
+        
+        if (el.type === 'window') g = createWindowGeometry(el, realW, realH, wallColor);
+        else if (el.type === 'door') g = createDoorGeometry(el, realW, realH);
+        
+        // Add Balcony if present
+        if (el.balcony) {
+            const balconyG = createBalconyGeometry(el, realW, realH);
+            g.add(balconyG);
+        }
+
+        // Add Porch if present
+        if (el.porch) {
+            const porchG = createPorchGeometry(el, realW, realH);
+            g.add(porchG);
+        }
+        
+        // Add Stairs if present
+        if (el.stairs) {
+            let startZ = 0;
+            let startY = -realH/2;
+            
+            if (el.porch) {
+                startZ = el.porch.depth || 1.5;
+                // Porch deck top is at -realH/2
+                startY = -realH/2; 
+            }
+            
+            const stairG = createStairGeometry(el, realW, realH, startY, startZ);
+            g.add(stairG);
+        }
+        
+        return g;
     }, [el, realW, realH]);
 
     return <primitive object={meshGroup} />;
@@ -125,6 +155,76 @@ const HouseModuleRenderer: React.FC<{
         [width, depth, module.roof]
     );
 
+    const timberGeo = useMemo(() => {
+        if (!module.facade?.timbering?.enabled) return new THREE.Group();
+        return createTimberGeometry(width, height, depth, module.grid, module.facade.timbering, module.facade.overrides);
+    }, [width, height, depth, module.grid, module.facade?.timbering, module.facade?.overrides]);
+
+    const dormerGroups = useMemo(() => {
+        if (!module.roof.dormers || module.roof.dormers.length === 0) return [];
+        
+        return module.roof.dormers.map(d => {
+            const isSkylight = d.type === 'skylight';
+            const g = isSkylight ? createSkylightGeometry(d) : createDormerGeometry(d);
+            
+            // Positioning Logic
+            const rH = module.roof.height;
+            const yBase = height; // Wall top
+            
+            let x = 0, y = 0, z = 0;
+            let rotY = 0;
+            let rotX = 0;
+            
+            // 0..1 along the face width
+            const posRatio = d.position;
+            // 0..1 up the slope
+            const elevRatio = d.elevation;
+            
+            // Calculate Y (elevation)
+            // Fix: User finds it too high ("at ridge").
+            // Usually elevation 0 = Eaves (yBase).
+            // Elevation 1 = Ridge (yBase + rH).
+            // But if Dormer is centered, at elev=1 it sits ON the ridge (half above).
+            // Let's trust the math but add the manual offset.
+            y = yBase + (elevRatio * rH) + (d.y_offset || 0);
+            
+            // Rotation: Manual or face-based fallback
+            // Convert degrees to radians
+            rotY = d.rotation_y !== undefined ? (d.rotation_y * Math.PI / 180) : 0;
+            rotX = d.rotation_x !== undefined ? (d.rotation_x * Math.PI / 180) : 0;
+            
+            // Calculate Pitch for Skylights
+            // Front/Back
+            const pitchFB = Math.atan2(rH, depth/2);
+            // Side
+            const pitchLR = Math.atan2(rH, width/2);
+
+            if (d.face === 'front') {
+                x = (-width/2) + (posRatio * width);
+                z = (depth/2) * (1 - elevRatio); // Corrected: Top is 0, Bottom is depth/2
+                if (d.rotation_y === undefined) rotY = 0;
+                if (isSkylight && d.rotation_x === undefined) rotX = pitchFB;
+            } else if (d.face === 'back') {
+                x = (-width/2) + (posRatio * width);
+                z = -(depth/2) * (1 - elevRatio);
+                if (d.rotation_y === undefined) rotY = Math.PI;
+                if (isSkylight && d.rotation_x === undefined) rotX = pitchFB;
+            } else if (d.face === 'right') {
+                z = (depth/2) - (posRatio * depth);
+                x = (width/2) * (1 - elevRatio);
+                if (d.rotation_y === undefined) rotY = Math.PI / 2;
+                if (isSkylight && d.rotation_x === undefined) rotX = pitchLR;
+            } else if (d.face === 'left') {
+                z = (-depth/2) + (posRatio * depth);
+                x = -(width/2) * (1 - elevRatio);
+                if (d.rotation_y === undefined) rotY = -Math.PI / 2;
+                if (isSkylight && d.rotation_x === undefined) rotX = pitchLR;
+            }
+            
+            return { mesh: g, pos: [x,y,z] as [number,number,number], rot: [rotX, rotY, 0] as [number,number,number], id: d.id };
+        });
+    }, [module.roof.dormers, width, height, depth, module.roof.height]);
+
     // --- FACADE RENDERING LOGIC ---
     const renderFace = (face: 'front' | 'back' | 'left' | 'right') => {
         const elements = [];
@@ -182,7 +282,12 @@ const HouseModuleRenderer: React.FC<{
 
                     elements.push(
                         <group key={key} position={[x, y, 0.1]}> 
-                            <ElementRenderer el={elDef} width={cellRealW} height={cellRealH} />
+                            <ElementRenderer 
+                                el={elDef} 
+                                width={cellRealW} 
+                                height={cellRealH} 
+                                wallColor={module.wall_color_hex || project.default_wall_color_hex}
+                            />
                         </group>
                     );
                 }
@@ -208,6 +313,14 @@ const HouseModuleRenderer: React.FC<{
                     position={[0, height/2, 0]} 
                     material={new THREE.MeshStandardMaterial({ color: module.roof.color_hex, side: THREE.DoubleSide })} 
                 />
+
+                {/* Timbering */}
+                <primitive object={timberGeo} />
+
+                {/* Dormers */}
+                {dormerGroups.map(d => (
+                    <primitive key={d.id} object={d.mesh} position={d.pos} rotation={d.rot} />
+                ))}
 
                 {/* Render Faces */}
                 {renderFace('front')}
