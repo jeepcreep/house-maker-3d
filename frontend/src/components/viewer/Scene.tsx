@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { HouseProject, HouseModule, DimensionConfig, FacadeElement } from '../../types/schema';
 import { createRoofGeometry, createTimberGeometry } from '../../utils/geometry';
 import { createWindowGeometry, createDoorGeometry, createBalconyGeometry, createPorchGeometry, createStairGeometry, createDormerGeometry, createSkylightGeometry } from '../../utils/elements';
+import { getProceduralTexture } from '../../utils/textures';
 
 // Helper: Get dimensions of a specific module
 function getModuleDims(module: HouseModule, dims: DimensionConfig) {
@@ -73,6 +74,7 @@ const ElementRenderer: React.FC<{ el: FacadeElement, width: number, height: numb
 interface Props {
     project: HouseProject;
     focusTarget?: { moduleId: string, face: string };
+    onSelect?: (type: 'module'|'face'|'element'|'dormer', id: string, data?: any) => void;
 }
 
 // Camera Controller Component
@@ -109,8 +111,9 @@ const HouseModuleRenderer: React.FC<{
     module: HouseModule, 
     project: HouseProject, 
     parentPos?: [number, number, number],
-    parentDims?: { width: number, height: number, depth: number }
-}> = ({ module, project, parentPos = [0,0,0], parentDims }) => {
+    parentDims?: { width: number, height: number, depth: number },
+    onSelect?: (type: 'module'|'face'|'element'|'dormer', id: string, data?: any) => void
+}> = ({ module, project, parentPos = [0,0,0], parentDims, onSelect }) => {
     
     const { global_dimensions } = project;
     const { width, height, depth, uW, fH, cD } = getModuleDims(module, global_dimensions);
@@ -281,7 +284,14 @@ const HouseModuleRenderer: React.FC<{
                     const y = cy + (elDef.offset_y * cellRealH);
 
                     elements.push(
-                        <group key={key} position={[x, y, 0.1]}> 
+                        <group 
+                            key={key} 
+                            position={[x, y, 0.1]}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSelect?.('element', module.id, { face, u: c, f: f });
+                            }}
+                        > 
                             <ElementRenderer 
                                 el={elDef} 
                                 width={cellRealW} 
@@ -297,21 +307,80 @@ const HouseModuleRenderer: React.FC<{
         return <group position={pos} rotation={rot}>{elements}</group>;
     };
 
+    const wallTexture = useMemo(() => {
+        if (!module.wall_texture_id) return null;
+        const tex = getProceduralTexture(module.wall_texture_id, module.wall_color_hex || project.default_wall_color_hex);
+        if (tex) {
+            tex.repeat.set(width / 4, height / 4); // Scale texture
+        }
+        return tex;
+    }, [module.wall_texture_id, module.wall_color_hex, width, height]);
+
+    const roofTexture = useMemo(() => {
+        if (!module.roof.texture_id) return null;
+        const tex = getProceduralTexture(module.roof.texture_id, module.roof.color_hex);
+        if (tex) {
+            tex.repeat.set(width / 4, depth / 4);
+        }
+        return tex;
+    }, [module.roof.texture_id, module.roof.color_hex, width, depth]);
+
     const children = project.modules.filter(m => m.attachment?.parent_id === module.id);
 
     return (
         <group>
             <group position={absPos}>
-                <mesh castShadow receiveShadow>
+                <mesh 
+                    castShadow 
+                    receiveShadow
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Determine face from normal
+                        // e.face is Three.Face3 (normal)
+                        // Local normal? The box is axis aligned locally.
+                        // But the group might be rotated if it's an attachment (e.g. Back face parent).
+                        // Wait, HouseModuleRenderer places child at global absPos. It does NOT rotate the child group relative to parent?
+                        // No, absPos is calculated.
+                        // But is the mesh rotated? No.
+                        // So normals are world-aligned (mostly).
+                        // Normal X > 0.5 -> Right.
+                        
+                        let face = 'front';
+                        if (e.face) {
+                            const n = e.face.normal;
+                            // Transform normal to world space if mesh is rotated? 
+                            // Mesh is inside Group at absPos. Rotation is 0?
+                            // Yes, rotation is 0.
+                            if (n.z > 0.5) face = 'front';
+                            else if (n.z < -0.5) face = 'back';
+                            else if (n.x > 0.5) face = 'right';
+                            else if (n.x < -0.5) face = 'left';
+                            else if (n.y > 0.5) face = 'top';
+                        }
+                        
+                        onSelect?.('face', module.id, { face });
+                    }}
+                >
                     <boxGeometry args={[width, height, depth]} />
-                    <meshStandardMaterial color={module.wall_color_hex || project.default_wall_color_hex} />
+                    <meshStandardMaterial 
+                        color={module.wall_color_hex || project.default_wall_color_hex} 
+                        map={wallTexture}
+                    />
                 </mesh>
                 
                 {/* Roof */}
                 <mesh 
                     geometry={roofGeo} 
                     position={[0, height/2, 0]} 
-                    material={new THREE.MeshStandardMaterial({ color: module.roof.color_hex, side: THREE.DoubleSide })} 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect?.('module', module.id);
+                    }}
+                    material={new THREE.MeshStandardMaterial({ 
+                        color: module.roof.color_hex, 
+                        side: THREE.DoubleSide,
+                        map: roofTexture
+                    })} 
                 />
 
                 {/* Timbering */}
@@ -319,7 +388,16 @@ const HouseModuleRenderer: React.FC<{
 
                 {/* Dormers */}
                 {dormerGroups.map(d => (
-                    <primitive key={d.id} object={d.mesh} position={d.pos} rotation={d.rot} />
+                    <primitive 
+                        key={d.id} 
+                        object={d.mesh} 
+                        position={d.pos} 
+                        rotation={d.rot} 
+                        onClick={(e: any) => {
+                            e.stopPropagation();
+                            onSelect?.('dormer', module.id, { dormerId: d.id });
+                        }}
+                    />
                 ))}
 
                 {/* Render Faces */}
@@ -336,13 +414,14 @@ const HouseModuleRenderer: React.FC<{
                     project={project} 
                     parentPos={absPos} 
                     parentDims={{ width, height, depth }}
+                    onSelect={onSelect}
                 />
             ))}
         </group>
     );
 };
 
-export const Scene: React.FC<Props> = ({ project, focusTarget }) => {
+export const Scene: React.FC<Props> = ({ project, focusTarget, onSelect }) => {
     const roots = project.modules.filter(m => !m.attachment);
 
     return (
@@ -355,7 +434,7 @@ export const Scene: React.FC<Props> = ({ project, focusTarget }) => {
             <CameraController target={focusTarget} project={project} />
 
             {roots.map(root => (
-                <HouseModuleRenderer key={root.id} module={root} project={project} />
+                <HouseModuleRenderer key={root.id} module={root} project={project} onSelect={onSelect} />
             ))}
             
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>

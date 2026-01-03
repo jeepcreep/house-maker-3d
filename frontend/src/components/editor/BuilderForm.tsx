@@ -6,6 +6,7 @@ interface Props {
     onUpdate: (project: HouseProject) => void;
     selectedModuleId: string;
     onSelectModule: (id: string) => void;
+    selectedDormerId?: string | null;
 }
 
 const ROOF_TYPES: RoofType[] = [
@@ -15,7 +16,7 @@ const ROOF_TYPES: RoofType[] = [
 
 const FACES = ['front', 'back', 'left', 'right', 'top'];
 
-export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModuleId, onSelectModule }) => {
+export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModuleId, onSelectModule, selectedDormerId }) => {
     // Local state removed, lifted to App
 
     const updateGlobal = (key: string, value: any) => {
@@ -281,7 +282,11 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModule
                                 <button onClick={() => addDormer(activeModule.id)} style={{ padding: '2px 5px', fontSize: '0.7rem' }}>+ Add</button>
                             </div>
                             {(activeModule.roof.dormers || []).map((d, i) => (
-                                <div key={d.id} style={{ background: '#222', padding: '5px', marginBottom: '5px', borderRadius: '4px' }}>
+                                <div key={d.id} style={{ 
+                                    background: d.id === selectedDormerId ? '#444' : '#222', 
+                                    border: d.id === selectedDormerId ? '1px solid #aaddff' : 'none',
+                                    padding: '5px', marginBottom: '5px', borderRadius: '4px' 
+                                }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span style={{ fontSize: '0.8rem' }}>#{i+1}</span>
                                         <button onClick={() => removeDormer(activeModule.id, d.id)} style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>x</button>

@@ -30,10 +30,17 @@ export function createWindowGeometry(el: FacadeElement | { window: any }, realW:
         
         // Radii (Max is half of smallest dimension)
         const maxR = Math.min(w, h) / 2;
-        const rtl = (winConfig?.corner_radius_tl || 0) * maxR;
-        const rtr = (winConfig?.corner_radius_tr || 0) * maxR;
-        const rbr = (winConfig?.corner_radius_br || 0) * maxR;
-        const rbl = (winConfig?.corner_radius_bl || 0) * maxR;
+        let rtl = (winConfig?.corner_radius_tl || 0) * maxR;
+        let rtr = (winConfig?.corner_radius_tr || 0) * maxR;
+        let rbr = (winConfig?.corner_radius_br || 0) * maxR;
+        let rbl = (winConfig?.corner_radius_bl || 0) * maxR;
+
+        // Shape Overrides
+        if (winConfig?.shape === 'arch') {
+            rtl = maxR; rtr = maxR; rbr = 0; rbl = 0;
+        } else if (winConfig?.shape === 'round') {
+            rtl = maxR; rtr = maxR; rbr = maxR; rbl = maxR;
+        }
 
         // Draw CCW
         
@@ -306,13 +313,17 @@ export function createDormerGeometry(d: DormerConfig) {
     frontGroup.position.set(0, 0, depth/2);
     group.add(frontGroup);
     
-    // Side Walls
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, h, depth), mat);
-    leftWall.position.set(-w/2 + wallThick/2, 0, 0);
+    // Side Walls (Extended downwards to penetrate roof)
+    const extraDown = 1.5; 
+    const sideH = h + extraDown;
+    const sideY = -extraDown / 2; // Center of new taller wall
+
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, sideH, depth), mat);
+    leftWall.position.set(-w/2 + wallThick/2, sideY, 0);
     group.add(leftWall);
     
-    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, h, depth), mat);
-    rightWall.position.set(w/2 - wallThick/2, 0, 0);
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, sideH, depth), mat);
+    rightWall.position.set(w/2 - wallThick/2, sideY, 0);
     group.add(rightWall);
     
     // 2. Roof

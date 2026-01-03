@@ -7,6 +7,7 @@ export interface ShutterConfig {
 }
 
 export interface WindowConfig {
+  shape?: 'rect' | 'arch' | 'round'; // Explicit shape control
   mullions_cols: number; 
   mullions_rows: number;
   frame_color?: string;
@@ -128,6 +129,7 @@ export interface RoofConfig {
   overhang: number; 
   height: number; 
   color_hex: string;
+  texture_id?: string; // e.g. 'shingles', 'tiles'
   ridge_ratio?: number; 
   slope_break_ratio?: number; 
   peak_offset?: number; 
@@ -166,6 +168,7 @@ export interface HouseModule {
   grid: GridCounts;
   roof: RoofConfig;
   wall_color_hex?: string;
+  wall_texture_id?: string; // e.g. 'brick', 'stucco'
   attachment?: ModuleAttachment;
   
   // NEW: Facade Configuration

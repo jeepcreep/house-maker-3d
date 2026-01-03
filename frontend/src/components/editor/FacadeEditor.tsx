@@ -6,13 +6,16 @@ interface Props {
     onUpdate: (project: HouseProject) => void;
     selection: { moduleId: string, face: string };
     onSelect: (moduleId: string, face: string) => void;
+    // New Props
+    selectedCell: { u: number, f: number } | null;
+    onSelectCell: (cell: { u: number, f: number } | null) => void;
 }
 
 const FACES = ['front', 'back', 'left', 'right'];
 
-export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, onSelect }) => {
+export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, onSelect, selectedCell, onSelectCell }) => {
     const { moduleId, face } = selection;
-    const [selectedCell, setSelectedCell] = useState<{ u: number, f: number } | null>(null);
+    // const [selectedCell, setSelectedCell] = useState<{ u: number, f: number } | null>(null); // Lifted
     const [clipboard, setClipboard] = useState<FacadeElement | null>(null);
 
     const activeModule = project.modules.find(m => m.id === moduleId);
@@ -273,7 +276,7 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
                             return (
                                 <button 
                                     key={`${u}-${f}`}
-                                    onClick={() => !obstructedBy && setSelectedCell({ u, f })}
+                                    onClick={() => !obstructedBy && onSelectCell({ u, f })}
                                     disabled={!!obstructedBy}
                                     title={obstructedBy ? `Blocked by module: ${obstructedBy}` : `Cell ${u},${f}`}
                                     style={{
