@@ -239,6 +239,25 @@ export function createWindowGeometry(el: FacadeElement | { window: any }, realW:
                  group.add(closedR);
             }
         }
+
+        // 5. FLOWER BOX
+        if (winConfig.flower_box) {
+            const boxW = realW * 1.1;
+            const boxH = 0.15;
+            const boxD = 0.2;
+            const boxMat = new THREE.MeshStandardMaterial({ color: '#553322' }); // Wooden box
+            const plantMat = new THREE.MeshStandardMaterial({ color: '#228B22' }); // Green plants
+
+            const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(boxW, boxH, boxD), boxMat);
+            // Position: below the window sill
+            boxMesh.position.set(0, -realH/2 - boxH/2, boxD/2);
+            group.add(boxMesh);
+
+            // Simple "Plants" (smaller boxes inside)
+            const plant = new THREE.Mesh(new THREE.BoxGeometry(boxW * 0.9, 0.1, boxD * 0.8), plantMat);
+            plant.position.set(0, -realH/2, boxD/2);
+            group.add(plant);
+        }
     }
 
     return group;

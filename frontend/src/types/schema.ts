@@ -14,6 +14,7 @@ export interface WindowConfig {
   glass_color?: string;
   transom_height?: number; 
   shutters?: ShutterConfig;
+  flower_box?: boolean; // New: Flower box detail
   
   // Corner Radii (0.0 = Square, 1.0 = Max Radius)
   corner_radius_tl?: number;
