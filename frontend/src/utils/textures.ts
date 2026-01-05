@@ -19,47 +19,34 @@ function createTexture(id: string, draw: (ctx: CanvasRenderingContext2D, w: numb
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    // Assume 1 unit = 1 meter. Texture size covers ~2-3 meters.
-    // If brick row is 0.1m, we need 20 rows in 2m.
-    // Let's adjust repeat later in material.
     textureCache[id] = tex;
     return tex;
 }
 
-export function getProceduralTexture(type: string, colorHex: string): THREE.Texture | null {
-    const key = `${type}_${colorHex}`;
+// We ignore colorHex here and return neutral grayscale textures 
+// so MeshStandardMaterial can tint them.
+// NOTE: Values must be mid-grey (approx 128) to allow lighting headroom. 
+// If too bright, they blow out to white under strong light.
+export function getProceduralTexture(type: string, _colorHex: string): THREE.Texture | null {
+    const key = `neutral_${type}`; 
     
-    // Parse color for shading
-    const c = new THREE.Color(colorHex);
-    const baseR = Math.floor(c.r * 255);
-    const baseG = Math.floor(c.g * 255);
-    const baseB = Math.floor(c.b * 255);
-    const darker = `rgb(${baseR*0.8}, ${baseG*0.8}, ${baseB*0.8})`;
-    const base = `rgb(${baseR}, ${baseG}, ${baseB})`;
-
     if (type === 'brick') {
         return createTexture(key, (ctx, w, h) => {
-            ctx.fillStyle = base; // Mortar color (actually inverse?) 
-            // Usually base is mortar, bricks are colored.
-            // Let's make base Mortar (light grey)
-            ctx.fillStyle = '#DDDDDD';
+            // Mortar (Darker Grey)
+            ctx.fillStyle = '#606060'; 
             ctx.fillRect(0, 0, w, h);
             
             const rows = 16;
             const rowH = h / rows;
-            const brickH = rowH * 0.9; // 10% mortar
+            const brickH = rowH * 0.85; 
             
             for (let y = 0; y < rows; y++) {
                 const offset = (y % 2) * (w / 4);
-                const brickW = w / 2.2;
+                const brickW = w / 2.1;
                 for (let x = -1; x < 4; x++) {
-                    // Random variation
-                    const noise = Math.random() * 0.1;
-                    const r = Math.min(255, baseR * (0.9 + noise));
-                    const g = Math.min(255, baseG * (0.9 + noise));
-                    const b = Math.min(255, baseB * (0.9 + noise));
-                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                    
+                    // Brick Face (Mid Grey)
+                    const val = 140 + Math.random() * 40; // 140-180
+                    ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
                     ctx.fillRect(x * (brickW + 10) + offset, y * rowH, brickW, brickH);
                 }
             }
@@ -68,14 +55,15 @@ export function getProceduralTexture(type: string, colorHex: string): THREE.Text
 
     if (type === 'stucco') {
         return createTexture(key, (ctx, w, h) => {
-            ctx.fillStyle = base;
+            // Base Mid Grey
+            ctx.fillStyle = '#AAAAAA';
             ctx.fillRect(0, 0, w, h);
-            // Noise
-            for (let i = 0; i < 50000; i++) {
+            // Noise (Darker/Lighter)
+            for (let i = 0; i < 80000; i++) {
                 const x = Math.random() * w;
                 const y = Math.random() * h;
-                const alpha = Math.random() * 0.1;
-                ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+                const val = Math.random() > 0.5 ? 80 : 160;
+                ctx.fillStyle = `rgba(${val},${val},${val},0.3)`; 
                 ctx.fillRect(x, y, 2, 2);
             }
         });
@@ -83,25 +71,23 @@ export function getProceduralTexture(type: string, colorHex: string): THREE.Text
 
     if (type === 'wood') {
         return createTexture(key, (ctx, w, h) => {
-            ctx.fillStyle = base;
+            // Gaps (Black)
+            ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, w, h);
             const planks = 10;
             const pH = h / planks;
             
             for (let i = 0; i < planks; i++) {
-                // Plank Variation
-                const shade = 0.9 + Math.random() * 0.2;
-                const r = Math.min(255, baseR * shade);
-                const g = Math.min(255, baseG * shade);
-                const b = Math.min(255, baseB * shade);
-                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                ctx.fillRect(0, i * pH, w, pH - 2); // Gap
+                // Plank (Mid Grey)
+                const shade = 100 + Math.random() * 60;
+                ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+                ctx.fillRect(0, i * pH + 2, w, pH - 4); 
                 
                 // Grain
-                ctx.fillStyle = `rgba(0,0,0,0.1)`;
-                for(let j=0; j<20; j++) {
-                    const y = i*pH + Math.random() * pH;
-                    ctx.fillRect(0, y, w, 1);
+                ctx.fillStyle = `rgba(0,0,0,0.3)`;
+                for(let j=0; j<30; j++) {
+                    const y = i*pH + 2 + Math.random() * (pH-4);
+                    ctx.fillRect(Math.random() * w, y, Math.random() * 150, 1);
                 }
             }
         });
@@ -109,7 +95,7 @@ export function getProceduralTexture(type: string, colorHex: string): THREE.Text
 
     if (type === 'shingles') {
         return createTexture(key, (ctx, w, h) => {
-            ctx.fillStyle = darker;
+            ctx.fillStyle = '#222222'; // Dark gaps
             ctx.fillRect(0, 0, w, h);
             const rows = 12;
             const cols = 8;
@@ -119,10 +105,8 @@ export function getProceduralTexture(type: string, colorHex: string): THREE.Text
             for (let y = 0; y < rows; y++) {
                 const off = (y%2) * (cW/2);
                 for (let x = -1; x < cols; x++) {
-                    const r = Math.min(255, baseR * (0.9 + Math.random()*0.2));
-                    const g = Math.min(255, baseG * (0.9 + Math.random()*0.2));
-                    const b = Math.min(255, baseB * (0.9 + Math.random()*0.2));
-                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    const val = 100 + Math.random() * 50; // Mid Grey
+                    ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
                     ctx.fillRect(x*cW + off, y*rH, cW-2, rH-2);
                 }
             }
@@ -131,7 +115,7 @@ export function getProceduralTexture(type: string, colorHex: string): THREE.Text
 
     if (type === 'tiles') { // Spanish style
         return createTexture(key, (ctx, w, h) => {
-            ctx.fillStyle = darker;
+            ctx.fillStyle = '#333333';
             ctx.fillRect(0, 0, w, h);
             const rows = 10;
             const cols = 10;
@@ -140,13 +124,10 @@ export function getProceduralTexture(type: string, colorHex: string): THREE.Text
             
             for (let y = 0; y < rows; y++) {
                 for (let x = 0; x < cols; x++) {
-                    const r = Math.min(255, baseR * (0.95 + Math.random()*0.1));
-                    const g = Math.min(255, baseG * (0.95 + Math.random()*0.1));
-                    const b = Math.min(255, baseB * (0.95 + Math.random()*0.1));
-                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                    
+                    const val = 120 + Math.random() * 40; // Mid Grey
+                    ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
                     ctx.beginPath();
-                    ctx.arc(x*cW + cW/2, y*rH + rH, cW/2, Math.PI, 0); // Semicircle
+                    ctx.arc(x*cW + cW/2, y*rH + rH, cW/2, Math.PI, 0); 
                     ctx.fill();
                 }
             }
@@ -155,13 +136,13 @@ export function getProceduralTexture(type: string, colorHex: string): THREE.Text
     
     if (type === 'metal') { // Standing seam
         return createTexture(key, (ctx, w, h) => {
-            ctx.fillStyle = base;
+            ctx.fillStyle = '#AAAAAA';
             ctx.fillRect(0, 0, w, h);
             const ribs = 8;
             const ribW = w / ribs;
-            ctx.fillStyle = darker;
+            ctx.fillStyle = '#555555';
             for(let i=0; i<ribs; i++) {
-                ctx.fillRect(i*ribW, 0, 4, h); // Seam
+                ctx.fillRect(i*ribW, 0, 4, h); 
             }
         });
     }

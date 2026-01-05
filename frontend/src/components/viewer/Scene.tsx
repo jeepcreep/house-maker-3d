@@ -330,59 +330,58 @@ const HouseModuleRenderer: React.FC<{
     return (
         <group>
             <group position={absPos}>
-                <mesh 
-                    castShadow 
-                    receiveShadow
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        // Determine face from normal
-                        // e.face is Three.Face3 (normal)
-                        // Local normal? The box is axis aligned locally.
-                        // But the group might be rotated if it's an attachment (e.g. Back face parent).
-                        // Wait, HouseModuleRenderer places child at global absPos. It does NOT rotate the child group relative to parent?
-                        // No, absPos is calculated.
-                        // But is the mesh rotated? No.
-                        // So normals are world-aligned (mostly).
-                        // Normal X > 0.5 -> Right.
-                        
-                        let face = 'front';
-                        if (e.face) {
-                            const n = e.face.normal;
-                            // Transform normal to world space if mesh is rotated? 
-                            // Mesh is inside Group at absPos. Rotation is 0?
-                            // Yes, rotation is 0.
-                            if (n.z > 0.5) face = 'front';
-                            else if (n.z < -0.5) face = 'back';
-                            else if (n.x > 0.5) face = 'right';
-                            else if (n.x < -0.5) face = 'left';
-                            else if (n.y > 0.5) face = 'top';
-                        }
-                        
-                        onSelect?.('face', module.id, { face });
-                    }}
-                >
-                    <boxGeometry args={[width, height, depth]} />
-                    <meshStandardMaterial 
-                        color={module.wall_color_hex || project.default_wall_color_hex} 
-                        map={wallTexture}
-                    />
-                </mesh>
-                
-                {/* Roof */}
-                <mesh 
-                    geometry={roofGeo} 
-                    position={[0, height/2, 0]} 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onSelect?.('module', module.id);
-                    }}
-                    material={new THREE.MeshStandardMaterial({ 
-                        color: module.roof.color_hex, 
-                        side: THREE.DoubleSide,
-                        map: roofTexture
-                    })} 
-                />
-
+                                <mesh 
+                                    castShadow 
+                                    receiveShadow
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Determine face from normal
+                                        // e.face is Three.Face3 (normal)
+                                        // Local normal? The box is axis aligned locally.
+                                        // But the group might be rotated if it's an attachment (e.g. Back face parent).
+                                        // Wait, HouseModuleRenderer places child at global absPos. It does NOT rotate the child group relative to parent?
+                                        // No, absPos is calculated.
+                                        // But is the mesh rotated? No.
+                                        // So normals are world-aligned (mostly).
+                                        // Normal X > 0.5 -> Right.
+                                        
+                                        let face = 'front';
+                                        if (e.face) {
+                                            const n = e.face.normal;
+                                            // Transform normal to world space if mesh is rotated? 
+                                            // Mesh is inside Group at absPos. Rotation is 0?
+                                            // Yes, rotation is 0.
+                                            if (n.z > 0.5) face = 'front';
+                                            else if (n.z < -0.5) face = 'back';
+                                            else if (n.x > 0.5) face = 'right';
+                                            else if (n.x < -0.5) face = 'left';
+                                            else if (n.y > 0.5) face = 'top';
+                                        }
+                                        
+                                        onSelect?.('face', module.id, { face });
+                                    }}
+                                >
+                                    <boxGeometry args={[width, height, depth]} />
+                                    <meshStandardMaterial 
+                                        color={module.wall_color_hex || project.default_wall_color_hex} 
+                                        map={wallTexture}
+                                    />
+                                </mesh>
+                                
+                                {/* Roof */}
+                                <mesh 
+                                    geometry={roofGeo} 
+                                    position={[0, height/2, 0]} 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSelect?.('module', module.id);
+                                    }}
+                                    material={new THREE.MeshStandardMaterial({
+                                        color: module.roof.color_hex, 
+                                        side: THREE.DoubleSide,
+                                        map: roofTexture
+                                    })} 
+                                />
                 {/* Timbering */}
                 <primitive object={timberGeo} />
 

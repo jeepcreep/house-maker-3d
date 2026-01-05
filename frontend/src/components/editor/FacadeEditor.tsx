@@ -381,6 +381,15 @@ export const FacadeEditor: React.FC<Props> = ({ project, onUpdate, selection, on
                                     </div>
                                 )}
                             </div>
+                            
+                            <div className="control-row" style={{marginTop: '5px'}}>
+                                <label>Flower Box</label>
+                                <input 
+                                    type="checkbox" 
+                                    checked={!!activeEl.window.flower_box} 
+                                    onChange={(e) => updateActiveDetail('window', 'flower_box', e.target.checked)} 
+                                />
+                            </div>
                         </div>
                     )}
 

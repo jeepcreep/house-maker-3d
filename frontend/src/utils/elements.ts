@@ -242,20 +242,34 @@ export function createWindowGeometry(el: FacadeElement | { window: any }, realW:
 
         // 5. FLOWER BOX
         if (winConfig.flower_box) {
-            const boxW = realW * 1.1;
+            let zPos = 0.2; // Default stick out
+            let yPos = -realH/2 - 0.15/2; // Below sill
+            let boxW = realW * 1.1;
+
+            // If Balcony exists, attach to balcony front!
+            // Need to check if el is FacadeElement
+            const hasBalcony = 'balcony' in el && el.balcony;
+            
+            if (hasBalcony) {
+                const b = (el as FacadeElement).balcony!;
+                zPos = (b.depth || 1.0) + 0.1; // Front of balcony
+                yPos = -realH/2 + (b.railing_height || 1.0) * 0.8; 
+                boxW = (realW + 0.4) * 0.9; 
+            }
+
             const boxH = 0.15;
             const boxD = 0.2;
             const boxMat = new THREE.MeshStandardMaterial({ color: '#553322' }); // Wooden box
             const plantMat = new THREE.MeshStandardMaterial({ color: '#228B22' }); // Green plants
 
             const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(boxW, boxH, boxD), boxMat);
-            // Position: below the window sill
-            boxMesh.position.set(0, -realH/2 - boxH/2, boxD/2);
+            // Position: below the window sill OR on balcony
+            boxMesh.position.set(0, yPos, zPos);
             group.add(boxMesh);
 
             // Simple "Plants" (smaller boxes inside)
             const plant = new THREE.Mesh(new THREE.BoxGeometry(boxW * 0.9, 0.1, boxD * 0.8), plantMat);
-            plant.position.set(0, -realH/2, boxD/2);
+            plant.position.set(0, yPos + boxH/2, zPos);
             group.add(plant);
         }
     }

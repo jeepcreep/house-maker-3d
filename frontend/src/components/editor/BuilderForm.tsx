@@ -274,6 +274,18 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModule
                             <label>Color</label>
                             <input type="color" value={activeModule.roof.color_hex} onChange={(e) => updateModuleRoof(activeModule.id, 'color_hex', e.target.value)} />
                         </div>
+                        <div className="control-row">
+                            <label>Texture</label>
+                            <select 
+                                value={activeModule.roof.texture_id || ""} 
+                                onChange={(e) => updateModuleRoof(activeModule.id, 'texture_id', e.target.value || undefined)}
+                            >
+                                <option value="">None</option>
+                                <option value="shingles">Shingles</option>
+                                <option value="tiles">Tiles (Clay)</option>
+                                <option value="metal">Metal Seam</option>
+                            </select>
+                        </div>
 
                         {/* DORMERS */}
                         <div style={{ marginTop: '10px', borderTop: '1px solid #444', paddingTop: '5px' }}>
@@ -361,6 +373,19 @@ export const BuilderForm: React.FC<Props> = ({ project, onUpdate, selectedModule
                         <div className="control-row">
                             <label>Wall Color</label>
                             <input type="color" value={activeModule.wall_color_hex || "#F0F0F0"} onChange={(e) => updateModule(activeModule.id, { wall_color_hex: e.target.value })} />
+                        </div>
+                        <div className="control-row">
+                            <label>Texture</label>
+                            <select 
+                                value={activeModule.wall_texture_id || ""} 
+                                onChange={(e) => updateModule(activeModule.id, { wall_texture_id: e.target.value || undefined })}
+                            >
+                                <option value="">None (Smooth)</option>
+                                <option value="brick">Brick</option>
+                                <option value="stucco">Stucco</option>
+                                <option value="wood">Wood</option>
+                                <option value="metal">Metal</option>
+                            </select>
                         </div>
                         
                         <div style={{ marginTop: '10px', borderTop: '1px solid #444', paddingTop: '5px' }}>
