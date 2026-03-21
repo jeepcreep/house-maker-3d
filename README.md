@@ -1,62 +1,69 @@
-# House Maker 3D
+# 🏠 House Maker 3D: The Architectural Prototyping Suite
 
-A professional-grade architectural prototyping tool for creating, visualizing, and procedurally generating 3D house models directly in the browser. 
-
-The project combines a precise **Grid-based Builder** with a **Procedural Engine** and an **AI Vision Architect** to bridge the gap between imagination and structured 3D data.
-
-## 🚀 Key Features
-
-*   **3D Scene Viewer:** High-performance rendering using React Three Fiber (Three.js) with real-time lighting, shadows, and environment mapping.
-*   **Procedural Architect 3.0:** Instant generation of houses across 13+ architectural styles including *Alpine, Japanese (Hogyo/Engawa), Mediterranean, Scandinavian, Gründerzeit, and Neue Sachlichkeit*.
-*   **AI Architect:** Image-to-JSON reconstruction. Upload a photo of a real house and let Google Gemini (2.0/2.5) analyze the structure and facade to rebuild it in 3D.
-*   **Facade System:** Granular control over window grids (mullions), shapes (arched/round), shutters, flower boxes, balconies, porches, and stairs.
-*   **Procedural Materials:** Dynamic grayscale textures (Brick, Stucco, Wood, Tile, Shingles, Metal) generated on-the-fly via Canvas and tinted by user-selected colors.
-*   **Direct Interaction:** Click-to-Select logic allows you to select modules, roofs, or windows directly in the 3D view for instant editing.
-*   **Persistent Storage:** Save and load your designs locally to iterate over time.
-
-## 🛠 Tech Stack
-
-*   **Frontend:** React 19, TypeScript, Three.js, React Three Fiber (R3F), Vite.
-*   **Backend:** Node.js, Express, TypeScript, Multer.
-*   **AI:** Google Generative AI (Gemini SDK).
-*   **Data Format:** Custom XBJ (JSON) schema designed for architectural modularity.
-
-## 🏁 How to Run
-
-### 1. Backend (AI Services)
-1. Navigate to the `backend/` directory.
-2. Create a `.env` file based on `.env.example`.
-3. Add your `GOOGLE_API_KEY`.
-4. Run:
-   ```bash
-   npm install
-   npm run dev
-   ```
-
-### 2. Frontend (The App)
-1. Navigate to the `frontend/` directory.
-2. Run:
-   ```bash
-   npm install
-   npm run dev
-   ```
-3. Open `http://localhost:5173` in your browser.
-
-## 🏗 Schema Architecture
-
-The core of the project is the `HouseProject` JSON schema. Every house is a collection of `modules` (boxes) with:
-*   **Grid:** Unit-based dimensions for perfect alignment.
-*   **Roof:** Sophisticated shapes (Gabled, Hipped, Mansard, Saltbox, etc.) with manual corner offsets.
-*   **Attachments:** Hierarchical parent-child relationships for towers, wings, and extensions.
-*   **Facades:** A pattern-based system with per-cell overrides for specific elements.
-
-## 🗺 Roadmap (Upcoming Features)
-
-*   [ ] **Export System:** Ability to export generated models to `.GLB` or `.OBJ` for use in Blender/Unity.
-*   [ ] **Interior Logic:** Support for floor plans, interior walls, and basic furniture placement.
-*   [ ] **Landscaping:** Procedural garden, fence, and terrain generation.
-*   [ ] **Advanced Materials:** PBR (Physically Based Rendering) texture support for even higher realism.
-*   [ ] **Undo/Redo:** History management for the manual builder.
+Welcome to **House Maker 3D**, a high-performance, browser-based tool for designing and generating 3D architectural models. Whether you're using **AI-powered vision** to reconstruct real buildings or building from scratch with a **procedural grid system**, House Maker 3D turns complex architectural data into interactive 3D scenes.
 
 ---
-*Created with focus on architectural precision and AI-driven creativity.*
+
+## 🌟 Core Pillars
+
+### 1. 🤖 AI Vision Architect
+Bridge the gap between reality and digital twins. Upload a photo of any house, and our **Google Gemini-powered** backend will analyze the structure, roof type, colors, and facade elements to generate a precise 3D JSON reconstruction.
+
+### 2. 🧱 Procedural Grid System
+Design with mathematical precision. Every house is built on a modular grid, allowing for:
+*   **13+ Architectural Styles:** From *Alpine* and *Japanese Engawa* to *Modernist* and *Gründerzeit*.
+*   **7+ Facade Add-ons:** Balconies, Porches, Timbering, Stairs, Dormers, Skylights, and Shutters.
+*   **Dynamic Roofs:** 12+ roof types including Gabled, Hipped, Mansard, and Gambrel with custom overhangs and ridge ratios.
+
+### 3. 🏢 Real Estate & PropTech (Spin-off)
+The project includes a specialized **Real Estate** branch focused on:
+*   **Virtual Staging:** Interactive tabbed interfaces for different property styles.
+*   **Marketing Tools:** Configurable Hero headlines, SEO-optimized titles, and customizable CTA buttons for property listings.
+*   **Public Embedding:** Share your 3D models via read-only public routes (`/embed/[id]`).
+
+---
+
+## 🛠 Technical Stack
+
+*   **Frontend:** [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Three.js](https://threejs.org/) via [React Three Fiber (R3F)](https://r3f.docs.pmnd.rs/).
+*   **Backend:** [Node.js](https://nodejs.org/) (Express/TypeScript) with [Google Generative AI SDK](https://ai.google.dev/).
+*   **Build Tool:** [Vite](https://vitejs.dev/) for lightning-fast development.
+*   **Schema:** Custom `HouseProject` JSON spec for portable architectural data.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Backend Setup (AI Services)
+The backend handles the heavy lifting for AI image analysis.
+1.  Navigate to `/backend`.
+2.  Install dependencies: `npm install`.
+3.  Create a `.env` file (see `.env.example`):
+    ```env
+    GOOGLE_API_KEY=your_gemini_api_key_here
+    GEMINI_MODEL_NAME=gemini-1.5-flash
+    ```
+4.  Start the server: `npm run dev`. (Runs on `http://localhost:8000`).
+
+### 2. Frontend Setup (The App)
+1.  Navigate to `/frontend`.
+2.  Install dependencies: `npm install`.
+3.  Start the dev server: `npm run dev`.
+4.  Open `http://localhost:5173` in your browser.
+
+---
+
+## 🏗 Schema & Extension
+The heart of this project is the `HouseProject` schema (found in `frontend/src/types/schema.ts`). It decomposes architecture into:
+*   **Modules:** The main structural volumes.
+*   **Attachments:** Towers, wings, or extensions relative to a parent module.
+*   **Overrides:** Specific cell-by-cell facade configurations for windows, doors, and balconies.
+
+## 🗺 Roadmap
+- [ ] **GLB/OBJ Export:** Download your models for Blender or Unity.
+- [ ] **Floor Plan Logic:** Interior wall generation and room sizing.
+- [ ] **Environment Engine:** Procedural terrain, fences, and foliage.
+- [ ] **PBR Materials:** Enhanced realism with high-quality texture maps.
+
+---
+*Created with a passion for code and architecture. Let's build something beautiful.*
