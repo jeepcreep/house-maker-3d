@@ -35,19 +35,19 @@ export function generateProceduralHouse(params: ProceduralParams): HouseProject 
     
     // --- STYLE DEFINITIONS ---
     const CONFIG: Record<string, any> = {
-        suburban: { walls: ['#F0F8FF', '#F5F5DC'], roofs: ['#8B4513', '#555555'], textures: { wall: 'wood', roof: 'shingles' } },
-        victorian: { walls: ['#E6E6FA', '#FFE4E1'], roofs: ['#2F4F4F', '#483D8B'], textures: { wall: 'wood', roof: 'shingles' } },
-        modern: { walls: ['#FFFFFF', '#333333'], roofs: ['#222222'], textures: { wall: 'stucco', roof: 'metal' } },
-        alpine: { walls: ['#8B4513', '#CD853F', '#DEB887'], roofs: ['#555555', '#696969'], textures: { wall: 'wood', roof: 'shingles' } },
-        mediterranean: { walls: ['#FFDEAD', '#F5DEB3', '#FFF8DC', '#FFDAB9', '#FFC0CB', '#FFFFE0'], roofs: ['#E9967A', '#CD5C5C', '#FFA07A'], textures: { wall: 'stucco', roof: 'tiles' } },
-        ranch: { walls: ['#FFFFFF', '#FAFAD2'], roofs: ['#708090', '#778899'], textures: { wall: 'wood', roof: 'shingles' } },
-        industrial: { walls: ['#A9A9A9'], roofs: ['#555555'], textures: { wall: 'brick', roof: 'metal' } },
-        german: { walls: ['#F0F0F0', '#FFFFF0'], roofs: ['#8B4513', '#A52A2A'], textures: { wall: 'stucco', roof: 'tiles' } },
-        scandinavian: { walls: ['#8B0000', '#DAA520', '#2F4F4F'], roofs: ['#333333', '#696969'], textures: { wall: 'wood', roof: 'metal' } },
-        japanese: { walls: ['#F5F5DC', '#FFFFFF'], roofs: ['#333333', '#444444'], textures: { wall: 'stucco', roof: 'tiles' } },
-        chinese: { walls: ['#B22222', '#F0F0F0'], roofs: ['#FFD700', '#333333'], textures: { wall: 'stucco', roof: 'tiles' } },
-        gruenderzeit: { walls: ['#DCDCDC', '#EEDD82', '#FFE4C4'], roofs: ['#2F4F4F', '#696969'], textures: { wall: 'stucco', roof: 'shingles' } },
-        neue_sachlichkeit: { walls: ['#FFFFFF', '#F5F5F5', '#8B0000'], roofs: ['#333333'], textures: { wall: 'brick', roof: 'metal' } }
+        suburban: { walls: ['#F0F8FF', '#F5F5DC', '#E0E0E0', '#FAF0E6'], roofs: ['#8B4513', '#555555', '#708090'], textures: { wall: 'wood', roof: 'shingles' } },
+        victorian: { walls: ['#E6E6FA', '#FFE4E1', '#F0E68C', '#BC8F8F'], roofs: ['#2F4F4F', '#483D8B', '#800000'], textures: { wall: 'wood', roof: 'shingles' } },
+        modern: { walls: ['#FFFFFF', '#333333', '#1A1A1A', '#F5F5F5'], roofs: ['#222222', '#444444'], textures: { wall: 'stucco', roof: 'metal' } },
+        alpine: { walls: ['#8B4513', '#CD853F', '#DEB887', '#FDF5E6'], roofs: ['#555555', '#696969', '#2F4F4F'], textures: { wall: 'wood', roof: 'shingles' } },
+        mediterranean: { walls: ['#FFDEAD', '#F5DEB3', '#FFF8DC', '#FFDAB9', '#FFC0CB', '#FFFFE0', '#FF7F50'], roofs: ['#E9967A', '#CD5C5C', '#FFA07A', '#B22222'], textures: { wall: 'stucco', roof: 'tiles' } },
+        ranch: { walls: ['#FFFFFF', '#FAFAD2', '#D3D3D3'], roofs: ['#708090', '#778899', '#2F4F4F'], textures: { wall: 'wood', roof: 'shingles' } },
+        industrial: { walls: ['#A9A9A9', '#707070', '#3E3E3E'], roofs: ['#555555', '#222222'], textures: { wall: 'brick', roof: 'metal' } },
+        german: { walls: ['#F0F0F0', '#FFFFF0', '#FFF5EE'], roofs: ['#8B4513', '#A52A2A', '#D2691E'], textures: { wall: 'stucco', roof: 'tiles' } },
+        scandinavian: { walls: ['#8B0000', '#DAA520', '#2F4F4F', '#F0F0F0', '#222222'], roofs: ['#333333', '#696969', '#1C1C1C'], textures: { wall: 'wood', roof: 'metal' } },
+        japanese: { walls: ['#F5F5DC', '#FFFFFF', '#FAF9F6'], roofs: ['#333333', '#444444', '#1A1A1A'], textures: { wall: 'stucco', roof: 'tiles' } },
+        chinese: { walls: ['#B22222', '#F0F0F0', '#FFFFFF'], roofs: ['#FFD700', '#333333', '#2F4F4F'], textures: { wall: 'stucco', roof: 'tiles' } },
+        gruenderzeit: { walls: ['#DCDCDC', '#EEDD82', '#FFE4C4', '#F5F5DC'], roofs: ['#2F4F4F', '#696969', '#483D8B'], textures: { wall: 'stucco', roof: 'shingles' } },
+        neue_sachlichkeit: { walls: ['#FFFFFF', '#F5F5F5', '#8B0000', '#B0B0B0'], roofs: ['#333333', '#000000'], textures: { wall: 'brick', roof: 'metal' } }
     };
     
     const styleConfig = CONFIG[style as keyof typeof CONFIG] || CONFIG['suburban'];
@@ -181,8 +181,33 @@ export function generateProceduralHouse(params: ProceduralParams): HouseProject 
         });
     }
 
+    // --- L-SHAPE / EXTENSIONS ---
+    if (complexity > 0.6 && !['japanese', 'chinese'].includes(style)) {
+        const extUnits = rng.intRange(1, units);
+        const extDepth = rng.intRange(2, 3);
+        const face = rng.pick(['left', 'right']) as any;
+        modules.push({
+            id: 'extension_side',
+            grid: { floors: Math.max(1, floors - rng.intRange(0, 1)), units: extUnits, depth: extDepth },
+            roof: { 
+                type: roofType, orientation: 'along', 
+                height: root.roof.height * 0.8, overhang: root.roof.overhang, 
+                color_hex: roofColor, texture_id: root.roof.texture_id, dormers: [] 
+            },
+            wall_color_hex: wallColor, wall_texture_id: root.wall_texture_id,
+            facade: { ...root.facade, overrides: {} },
+            attachment: { parent_id: 'main', face: face, origin_x: 0, origin_y: 0 }
+        });
+    }
+
     // --- DETAILING PASS ---
     if (detailing > 0) {
+        // Randomize Window Mullions for variety
+        if (rng.bool(detailing * 0.5)) {
+            root.facade.base_window.window!.mullions_cols = rng.intRange(1, 3);
+            root.facade.base_window.window!.mullions_rows = rng.intRange(1, 3);
+        }
+
         // Mediterranean Shutter Variety
         if (style === 'mediterranean') {
             for (let f=0; f<floors; f++) {

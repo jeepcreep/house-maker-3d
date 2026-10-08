@@ -1,39 +1,35 @@
-import express from 'express';
-import cors from 'cors';
-import multer from 'multer';
-import dotenv from 'dotenv';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-dotenv.config();
-
-const app = express();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const multer_1 = __importDefault(require("multer"));
+const dotenv_1 = __importDefault(require("dotenv"));
+const generative_ai_1 = require("@google/generative-ai");
+dotenv_1.default.config();
+const app = (0, express_1.default)();
 const port = 8000;
-
 // Middleware
-app.use(cors());
-app.use(express.json());
-
+app.use((0, cors_1.default)());
+app.use(express_1.default.json());
 // File Upload
-const upload = multer({ storage: multer.memoryStorage() });
-
+const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 // Gemini Config
 const apiKey = process.env.GOOGLE_API_KEY;
 // Use the environment variable directly. Fallback is handled downstream if needed, 
 // but we prioritize the user's config.
-const modelName = process.env.GEMINI_MODEL_NAME; 
-
+const modelName = process.env.GEMINI_MODEL_NAME;
 if (!apiKey) {
     console.warn("Warning: GOOGLE_API_KEY not set in backend/.env");
 }
 if (!modelName) {
     console.warn("Warning: GEMINI_MODEL_NAME not set in backend/.env. Defaulting to 'gemini-1.5-flash' for safety.");
 }
-
 const activeModel = modelName || 'gemini-1.5-flash';
 console.log(`[Backend] Initializing AI with model: ${activeModel}`);
-
-const genAI = new GoogleGenerativeAI(apiKey || "");
-
+const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey || "");
 // Schema Definition (Typescript interface as string for the prompt)
 const SCHEMA_DEFINITION = `
 export interface ShutterConfig { color: string; style: 'louvred' | 'panel' | 'board'; open: boolean; }
@@ -56,7 +52,6 @@ export interface HouseModule { id: string; grid: GridCounts; roof: RoofConfig; w
 export interface DimensionConfig { mode: 'absolute' | 'relative'; reference_sizing: number; floor_height: number; unit_width: number; cell_depth: number; }
 export interface HouseProject { global_dimensions: DimensionConfig; modules: HouseModule[]; default_wall_color_hex: string; }
 `;
-
 const SYSTEM_PROMPT = `
 You are an expert architectural AI. Your task is to analyze the provided image of a house and reconstruct it as a 3D model.
 
@@ -75,7 +70,6 @@ You are an expert architectural AI. Your task is to analyze the provided image o
 # Schema Definition:
 ${SCHEMA_DEFINITION}
 `;
-
 const SYSTEM_PROMPT_UPDATE = `
 You are an expert architectural AI. Your task is to modify an existing 3D house model based on natural language instructions.
 
@@ -93,76 +87,73 @@ You are an expert architectural AI. Your task is to modify an existing 3D house 
 # Schema Definition:
 ${SCHEMA_DEFINITION}
 `;
-
 app.get('/', (req, res) => {
     res.send({ message: "House Maker API (Node/TS)", model: activeModel });
 });
-
 app.post('/generate', upload.single('file'), async (req, res) => {
-    // ... (existing code)
-});
-
-app.post('/create', async (req, res) => {
     if (!apiKey) {
         res.status(500).json({ error: "Server API Key not configured." });
         return;
     }
-    
     try {
-        const { prompt } = req.body;
-
-        if (!prompt) {
-            res.status(400).json({ error: "No prompt provided" });
+        const file = req.file;
+        const promptText = req.body.prompt || "";
+        if (!file) {
+            res.status(400).json({ error: "No file uploaded" });
             return;
         }
-
         const model = genAI.getGenerativeModel({ model: activeModel });
-
-        const result = await model.generateContent([
+        const imagePart = {
+            inlineData: {
+                data: file.buffer.toString('base64'),
+                mimeType: file.mimetype
+            }
+        };
+        const parts = [
             SYSTEM_PROMPT,
-            `User Request: ${prompt}`
-        ]);
+            imagePart,
+        ];
+        if (promptText) {
+            parts.push(`User Tip: ${promptText}`);
+        }
+        const result = await model.generateContent(parts);
         const response = await result.response;
         const text = response.text();
-
         // Extract JSON using Regex
         let jsonText = text;
         const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
             jsonText = jsonMatch[1];
-        } else {
+        }
+        else {
+            // Fallback: try to find start/end braces if no markdown
             const start = text.indexOf('{');
             const end = text.lastIndexOf('}');
             if (start !== -1 && end !== -1) {
                 jsonText = text.substring(start, end + 1);
             }
         }
-        
         const data = JSON.parse(jsonText.trim());
+        // Inject debug info
         res.json({ ...data, _debug_raw_text: text });
-
-    } catch (e: any) {
+    }
+    catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
-
 app.post('/update', async (req, res) => {
     if (!apiKey) {
         res.status(500).json({ error: "Server API Key not configured." });
         return;
     }
-    
     try {
         const { currentProject, instruction } = req.body;
-
         if (!currentProject || !instruction) {
             res.status(400).json({ error: "Missing currentProject or instruction" });
             return;
         }
-
         const model = genAI.getGenerativeModel({ model: activeModel });
-
         const prompt = `
         CURRENT MODEL:
         ${JSON.stringify(currentProject, null, 2)}
@@ -170,36 +161,33 @@ app.post('/update', async (req, res) => {
         USER INSTRUCTION:
         ${instruction}
         `;
-
         const result = await model.generateContent([
             SYSTEM_PROMPT_UPDATE,
             prompt
         ]);
         const response = await result.response;
         const text = response.text();
-
         // Extract JSON using Regex
         let jsonText = text;
         const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
             jsonText = jsonMatch[1];
-        } else {
+        }
+        else {
             const start = text.indexOf('{');
             const end = text.lastIndexOf('}');
             if (start !== -1 && end !== -1) {
                 jsonText = text.substring(start, end + 1);
             }
         }
-        
         const data = JSON.parse(jsonText.trim());
         res.json({ ...data, _debug_raw_text: text });
-
-    } catch (e: any) {
+    }
+    catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
-
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });

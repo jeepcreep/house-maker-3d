@@ -39,34 +39,27 @@ function App() {
 
   // Scene Selection Handler
   const handleSceneSelect = (type: 'module'|'face'|'element'|'dormer', id: string, data?: any) => {
-      // 1. Select Module
-      if (type === 'module' || type === 'face' || type === 'element' || type === 'dormer') {
-          setSelectedModuleId(id);
-          if (data?.face) setSelectedFace(data.face);
-      }
-
-      // 2. Select Face/Element -> Open Facade Editor
+      // 1. Select Module/Dormer/Element
+      setSelectedModuleId(id);
+      
       if (type === 'face') {
-          setActiveTab('facade');
-          setSelectedCell(null);
-          if(!showEditor) setShowEditor(true);
-      } else if (type === 'element') {
-          setActiveTab('facade');
-          setSelectedCell({ u: data.u, f: data.f });
-          if(!showEditor) setShowEditor(true);
-      } 
-      // 3. Select Dormer -> Open Builder Form
-      else if (type === 'dormer') {
-          setActiveTab('form');
-          setSelectedDormerId(data.dormerId);
-          if(!showEditor) setShowEditor(true);
-      }
-      // 4. Select Roof/Module -> Open Builder Form
-      else if (type === 'module') {
-          setActiveTab('form');
+          setSelectedFace(data?.face || 'front');
           setSelectedDormerId(null);
-          if(!showEditor) setShowEditor(true);
+          setSelectedCell(null);
+      } else if (type === 'element') {
+          setSelectedFace(data?.face || 'front');
+          setSelectedCell({ u: data.u, f: data.f });
+          setSelectedDormerId(null);
+      } else if (type === 'dormer') {
+          setSelectedDormerId(data.dormerId);
+          setSelectedCell(null);
+      } else if (type === 'module') {
+          setSelectedDormerId(null);
+          setSelectedCell(null);
       }
+      
+      // Removed automatic tab switching: "I don't want to have to unlock them first"
+      // Users can still switch manually if they want the editor forms.
   };
 
   // State for Save System
@@ -199,7 +192,9 @@ function App() {
         <Scene 
             project={project} 
             focusTarget={{ moduleId: selectedModuleId, face: selectedFace }}
+            selectedDormerId={selectedDormerId}
             onSelect={handleSceneSelect}
+            onUpdate={handleProjectUpdate}
         />
         <div className="info-overlay" style={{ pointerEvents: 'none', zIndex: 1000 }}>
           <div style={{ pointerEvents: 'auto' }}>
@@ -300,6 +295,7 @@ function App() {
             {activeTab === 'ai' && (
                 <AIPanel 
                     onLoad={handleAILoad} 
+                    project={project}
                     file={aiFile} setFile={setAiFile}
                     prompt={aiPrompt} setPrompt={setAiPrompt}
                     debugOutput={aiDebug} setDebugOutput={setAiDebug}
